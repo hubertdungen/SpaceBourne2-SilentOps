@@ -7,7 +7,7 @@ depending on distance, where they are looking, your stance, how fast you move an
 flashlight. Gunshots carry, suppressors reduce the sound without erasing it, a knife from
 behind kills silently, and your squad can follow you quietly without opening fire.
 
-Version 0.1.0 · UE4SS Lua mod · works alone or with
+Version 0.1.0 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6) · UE4SS Lua mod · works alone or with
 [Hardcore Tactical Realism](https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism).
 
 ## What it does
@@ -104,8 +104,8 @@ Separate mods that work alone or together:
 | Mod | Status |
 |---|---|
 | **Hardcore Tactical Realism (HTR)** — realistic ballistics and tactical AI | released: [GitHub](https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism) · [Nexus Mods](https://www.nexusmods.com/games/spacebourne2/mods/4) · [Steam discussion](https://steamcommunity.com/app/1646850/discussions/0/573805072991123580) |
-| **Silent Ops** — realistic stealth (this mod) | released |
-| Split Controls | coming |
+| **Silent Ops** — realistic stealth (this mod) | released: [GitHub](https://github.com/hubertdungen/SpaceBourne2-SilentOps) · [Nexus Mods](https://www.nexusmods.com/spacebourne2/mods/6) |
+| Split Controls | released (Nexus Mods) |
 | Gear Without Levels | coming |
 | Tactical Engineering | coming |
 | Faction Power | coming |
