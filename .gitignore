@@ -1,0 +1,4 @@
+# files the mod writes in the game folder
+stealth.log
+stealth_state.txt
+debug_cmd.txt
