@@ -137,7 +137,8 @@ end
 
 -- Post-hook of Master_Soldier_C:BattleShoot / PistolShot: squad gunfire is noise.
 function AL.onSoldierShot(N, sol)
-    N.emit(U.location(sol), STEALTH.cfg.Noise.SquadShot, "squad", true)
+    local n = STEALTH.cfg.Noise
+    N.emit(U.location(sol), n.SquadShot, "squad", "hunt", n.ShotAlarm.rifle or 0.6)
 end
 
 -- Stealth switched off: everyone back to vanilla.

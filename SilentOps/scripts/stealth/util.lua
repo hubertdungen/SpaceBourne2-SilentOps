@@ -149,18 +149,16 @@ end
 -- Is Shift, Ctrl or Alt held right now? Asked of the game's own input (same technique as
 -- HTR 0.4.4), so a plain F4 bind stays quiet when the player presses Shift+F4, and plain F3
 -- stays quiet for Shift+F3. Key presses only. Verified in game.
+-- The controller is looked up again on every press, never kept: after a load the old one's memory
+-- can be reused by another object at the same address (HTR's finding, 2026-10-31).
 local MOD_KEYS = { "LeftShift", "RightShift", "LeftControl", "RightControl", "LeftAlt", "RightAlt" }
-local PC
 function U.modifierDown(player)
     local pc
     if U.valid(player) then
         local ok, c = pcall(function() return player.Controller end)
         if ok and U.valid(c) then pc = c end
     end
-    if not pc then
-        if not U.valid(PC) then PC = FindFirstOf("PlayerController") end -- one lookup, key presses only
-        pc = PC
-    end
+    if not pc then pc = FindFirstOf("PlayerController") end -- rare (no pawn controller), key presses only
     if not U.valid(pc) then return false end
     for _, k in ipairs(MOD_KEYS) do
         local ok, down = pcall(function() return pc:IsInputKeyDown({ KeyName = FName(k) }) end)
@@ -169,10 +167,46 @@ function U.modifierDown(player)
     return false
 end
 
+-- The warning widget plays the game's "can't do that" alarm (GUI_Cant, "tu-tu-tu") with every
+-- message. With Hud.Quiet the mod silences that one sound for 2 s around its own messages, the
+-- way HTR 0.4.6 does (a SoundWave's Volume is applied while it plays); the game's own warnings
+-- keep their sound. HTR may mute the same sound: the real volume is shared through
+-- ModRef "SB2R_CantVolume" and a volume of 0 is never taken as the real one, so the alarm can
+-- never be left silent.
+local CANT = "/Game/11Misc/LGUI/Audio/GUI_Cant.GUI_Cant"
+local cantObj, unmuteAt = nil, 0
+local function realVolume(snd)
+    local ok, shared = pcall(function() return ModRef:GetSharedVariable("SB2R_CantVolume") end)
+    if ok and type(shared) == "number" and shared > 0 then return shared end
+    local okV, v = pcall(function() return snd.Volume end)
+    if okV and type(v) == "number" and v > 0 then
+        pcall(function() ModRef:SetSharedVariable("SB2R_CantVolume", v) end)
+        return v
+    end
+    return nil -- muted by someone else right now: leave it to them
+end
+local function muteAlarm()
+    if not U.Quiet then return end
+    if not U.valid(cantObj) then cantObj = StaticFindObject(CANT) end -- loaded with the HUD
+    local snd = cantObj
+    if not U.valid(snd) then return end
+    local vol = realVolume(snd)
+    if not vol then return end
+    pcall(function() snd.Volume = 0.0 end)
+    unmuteAt = os.clock() + 2.0
+    ExecuteWithDelay(2100, function()
+        ExecuteInGameThread(function()
+            if os.clock() < unmuteAt then return end -- a newer message keeps it quiet a bit longer
+            if U.valid(cantObj) then pcall(function() cantObj.Volume = vol end) end
+        end)
+    end)
+end
+
 -- On-screen message on foot (verified by HTR 0.4.1).
 function U.notify(text, ctx)
     local p = U.playerPawn(ctx) or ctx
     if not U.valid(p) then return false end
+    pcall(muteAlarm)
     return pcall(function() p:TMWPerkWarning(FText(text)) end)
 end
 

@@ -16,42 +16,52 @@
     stealth/hud.lua         on-screen messages
 ]]
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 local U = require("stealth.util")
 
 -- Settings -------------------------------------------------------------------------
+-- (0.1 settings that 0.2 no longer reads: SearchingRangeFactor, AlertedPerception,
+-- InstantAlertRange, Noise.LoudFraction, Takedown.WitnessRange; see Senses, InstantRange, Witness.)
 local defaults = {
-    Enabled = false, ToggleKey = "Shift+F4",
+    Enabled = true, RememberToggle = false, ToggleKey = "Shift+F4",
     Detection = {
-        SightSource = "eye", SightRange = 3500, SearchingRangeFactor = 2.0, BubbleRadius = 6000, CentralHalfAngle = 35, PeripheralHalfAngle = 75, PeripheralFactor = 0.35,
+        SightSource = "eye", SightRange = 3500, BubbleRadius = 6000, CentralHalfAngle = 35, PeripheralHalfAngle = 75, PeripheralFactor = 0.35,
         Stance = { Standing = 1.0, Crouching = 0.6 }, Movement = { Still = 0.5, Walk = 1.0, Run = 1.5, Sprint = 2.2 },
-        MovementRange = { Still = 0.85, Walk = 1.0, Run = 1.1, Sprint = 1.2 },
+        MovementRange = { Still = 1.0, Walk = 1.0, Run = 1.1, Sprint = 1.2 },
         StillSpeed = 50, FlashlightFactor = 2.0, FlashlightRangeFactor = 1.5, AmbientLight = 1.0,
-        FillNearPerSec = 2.0, FillFarPerSec = 0.25, DecayPerSec = 0.12, SuspiciousAt = 0.35, InvestigateAt = 0.6,
-        InstantAlertRange = 250, ProximityRange = 120, ProximitySeconds = 1.5,
-        AlertedPerception = 1.5, AlertedMemorySeconds = 120, SearchRadius = 600, InvestigateStepSeconds = 6,
+        FillNearPerSec = 2.0, FillFarPerSec = 0.25, StandingNoticePerSec = 0.2, FarNoticeFactor = 1.6, DecayPerSec = 0.12,
+        SuspiciousAt = 0.35, InvestigateAt = 0.6, HuntAt = 0.5,
+        InstantRange = 800, InstantRangeSide = 300, InstantRangeCrouched = 300, ProximityRange = 150, ProximitySeconds = 1.0,
+        Senses = { Range = { 1.0, 1.4, 1.8 }, ExtraAngle = { 0, 15, 30 }, Hearing = { 1.0, 1.3, 1.6 }, Speed = { 1.0, 1.4, 1.8 } },
+        AlertedMemorySeconds = 120, SearchRadius = 600, InvestigateStepSeconds = 6,
         SearchSeconds = 40, LoseSeconds = 25, Shout = true, ShoutRadius = 1500, SniperRangeFactor = 1.0,
-        Perception = { Pirate = 0.85, Militia = 0.9, Elite = 1.15 },
+        Perception = { Pirate = 0.85, Militia = 0.75, Regular = 1.0, Elite = 1.35 },
+        ReactionSeconds = { Pirate = 0.5, Militia = 0.7, Regular = 0.4, Elite = 0.15 },
         AffectBosses = false, AffectTanks = false, MaxLineOfSightPerTick = 8,
     },
     Noise = {
-        Shot = { pistol = 5000, smg = 6000, rifle = 8000, shotgun = 7000, dmr = 9000, sniper = 10000, laser = 2500, beam = 1500 },
-        SuppressedShot = { pistol = 1200, smg = 1500, rifle = 2500, dmr = 2500, sniper = 3500 }, Impact = 500, Footsteps = { Crouch = 100, Walk = 300, Run = 700, Sprint = 1200 },
+        Shot = { pistol = 4500, smg = 6000, rifle = 6500, shotgun = 7500, dmr = 8500, sniper = 10000, grenade = 12000,
+                 turret = 6500, laser = 2500, beam = 1500 },
+        ShotAlarm = { pistol = 0.5, smg = 0.6, rifle = 0.6, shotgun = 0.7, dmr = 0.75, sniper = 0.8, grenade = 0.95,
+                      turret = 0.7, laser = 0.3, beam = 0.2 },
+        SuppressedShot = { pistol = 1200 }, Impact = 500, Footsteps = { Crouch = 100, Walk = 300, Run = 700, Sprint = 1200 },
         BodyFall = 500, Takedown = 250, HeavyTakedown = 600, SquadShot = 6000,
-        OccludedFactor = 0.5, LoudFraction = 0.4, HeardBump = 0.4, MaxOcclusionChecksPerTick = 6,
+        Pain = 1500, Dying = 1500, PainMeter = 0.7, TurretDeploy = 1200, GrenadeLaunch = 1500, GrenadeDistance = 1500, GrenadeDelay = 1.5,
+        OccludedFactor = 0.5, HeardBump = 0.4, MaxOcclusionChecksPerTick = 6,
     },
     Suppressor = {
-        ToggleKey = "F4", Eligible = { pistol = true, smg = true, rifle = true, dmr = true, sniper = true },
-        AlwaysSilenced = {}, VelocityFactor = 0.92,
+        ToggleKey = "F4", Eligible = { pistol = true }, AlwaysSilenced = {}, VelocityFactor = 0.92, SpreadDegrees = 0.4,
     },
     Takedown = {
         Enabled = true, Weapons = { knife = true, sword = true, hammer = false }, MaxDistance = 220, BehindAngle = 110,
-        RequireCrouch = false, AllowSearchingTarget = false, MeleeLock = true, WitnessRange = 1500,
+        RequireCrouch = false, AllowSearchingTarget = false, MeleeLock = true,
     },
+    Witness = { Range = 1500, SawKillMeter = 0.95, CoverChance = 0.5, CallRadius = 2500, CalledMeter = 0.6, BodyMeter = 0.75 },
     Bodies = { Enabled = true, SeeRange = 1500, CloseRange = 300, KeepSeconds = 180 },
     Allies = { OrderKey = "F3", AutoWeaponsFree = true, FollowDistance = 400, CatchUpDistance = 3000 },
-    Hud = { Messages = true, MinSecondsBetween = 2.0 },
+    Gamepad = { Enabled = true, TapWindow = 0.45 },
+    Hud = { Messages = true, Quiet = true, States = true, ShowHidden = false, MinSecondsBetween = 4.0 },
     Debug = { Log = false, SlowHookMs = 8, TickMs = 200, Commands = false },
 }
 
@@ -74,6 +84,7 @@ if not okCfg or type(userCfg) ~= "table" then
 end
 local cfg = merge(userCfg, defaults)
 U.Verbose = cfg.Debug.Log
+U.Quiet = cfg.Hud.Quiet
 
 STEALTH = { version = VERSION, cfg = cfg, on = false, player = nil, playerAddr = nil }
 
@@ -92,7 +103,9 @@ local function loadState()
     local f = io.open(STATE, "r")
     local s = f and f:read("a") or ""
     if f then f:close() end
-    local v = s:match("stealth=(%a+)")
+    -- On at every game start (Enabled); the key is for situations. RememberToggle keeps the
+    -- last on/off between sessions instead.
+    local v = cfg.RememberToggle and s:match("stealth=(%a+)") or nil
     STEALTH.on = (v == "on") or (v == nil and cfg.Enabled == true)
     N.load(s)
 end
@@ -105,6 +118,10 @@ local function saveState()
 end
 loadState()
 A.on = STEALTH.on
+-- Other mods of the set can ask whether stealth is on (Tactical Engineering then skips its
+-- vanilla alert): ModRef:GetSharedVariable("SilentOps_On").
+local function publishOn() pcall(function() ModRef:SetSharedVariable("SilentOps_On", STEALTH.on == true) end) end
+publishOn()
 U.log(string.format("=== Silent Ops %s loaded, stealth=%s ===", VERSION, tostring(STEALTH.on)))
 
 -- The on-foot player character (Q1_Character_C), not a ship.
@@ -121,9 +138,10 @@ end
 -- Key presses: the pawn you control right now, or nil when you are not on foot (in a ship F3/F4
 -- are fleet orders, so the stealth keys do nothing there). Without a cached object this is one
 -- slower lookup (as HTR does), on key presses only.
-local function playerForKey()
+local function playerForKey(ctx)
     local p
-    if U.valid(STEALTH.player) then p = U.playerPawn(STEALTH.player) end
+    if U.valid(ctx) then p = U.playerPawn(ctx) end -- gamepad: the pawn that pressed the button
+    if not p and U.valid(STEALTH.player) then p = U.playerPawn(STEALTH.player) end
     if not p then
         for _, pc in ipairs(FindAllOf("PlayerController") or {}) do
             local ok, pawn = pcall(function() return pc.Pawn end)
@@ -157,13 +175,16 @@ H.add(G.Fn.NpcReceivePoint, function(self, dmgP, dtypeP, locP, normP, compP, bon
     local dtype, causer = dtypeP:get(), causerP:get()
     if T.tryTakedown(A, N, npc, dtype, causer) then return end
     A.onHit(npc, causer)
+    -- wounded and alive: it cries out (dying ones cry from the death hook)
+    if not U.get(npc, G.P.Dead, false) and not U.get(npc, G.P.IsCompanion, false) then N.onPain(U.location(npc), false) end
 end, "NPC hit")
 
 H.add(G.Fn.NpcOnDead, function(self)
     if not STEALTH.on then return end
     local npc = self:get()
     A.onDead(npc)
-    T.onDeath(A, N, npc)
+    if U.get(npc, G.P.IsCompanion, false) then return end
+    T.onDeath(A, N, npc, U.alive(STEALTH.player, STEALTH.playerAddr) and STEALTH.player or nil)
 end, "NPC death")
 
 local function onShot(self) if STEALTH.on then N.onShot(self:get()) end end
@@ -188,6 +209,14 @@ local function onSquadShot(self) if STEALTH.on then AL.onSoldierShot(N, self:get
 H.add(G.Fn.SoldierShoot, onSquadShot, "squad shot")
 H.add(G.Fn.SoldierPistol, onSquadShot, "squad pistol")
 
+-- 0.2: suppressor spread, grenades, turrets
+H.add(G.Fn.WeaponTrace, function(self, startP, endP)
+    if STEALTH.on then N.onTrace(self:get(), startP, endP) end
+end, "shot aim")
+H.add(G.Fn.WeaponGrenade, function(self) if STEALTH.on then N.onGrenadeLaunch(self:get()) end end, "grenade launch")
+H.add(G.Fn.TurretBeginPlay, function(self) if STEALTH.on then N.onTurretDeployed(self:get()) end end, "turret deployed")
+H.add(G.Fn.TurretShoot, function(self) if STEALTH.on then N.onTurretShot(self:get()) end end, "turret shot")
+
 -- Tick -----------------------------------------------------------------------------
 local lastTick, pollAt, slowAt, profileAt, statusAt, cmdAt = os.clock(), 0, -1e9, os.clock() + 30, 0, 0
 local KEYS = {} -- key actions (filled below), also reachable through Debug.Commands
@@ -206,6 +235,31 @@ local function debugCommands(now)
     end
 end
 local wasCompromised = false
+
+-- Gamepad: quick presses of the flashlight button (Q1_Character's gamepad-only light action;
+-- the keyboard light key is a different action, so it never counts).
+--   2 presses: squad order (a quick flash, like a signal)      4 presses: stealth on / off
+--   4 presses while crouched: fit / remove the suppressor
+-- An even number of presses leaves the light as it was. Resolved once the presses stop.
+local pad = { taps = 0, last = 0, pawn = nil }
+local function padResolve(now)
+    if pad.taps == 0 or now - pad.last < cfg.Gamepad.TapWindow then return end
+    local n, pawn = pad.taps, pad.pawn
+    pad.taps, pad.pawn = 0, nil
+    if not U.valid(pawn) then return end
+    U.log("gamepad: " .. n .. " flashlight presses")
+    if n == 2 then KEYS.order(pawn)
+    elseif n == 4 then
+        if U.get(pawn, G.P.Stance, 0) == G.Stance.Crouching then KEYS.suppressor(pawn) else KEYS.toggle(pawn) end
+    end
+end
+if cfg.Gamepad.Enabled then
+    H.add(G.Fn.PadLight, function(self)
+        local now = os.clock()
+        if now - pad.last > 1.5 then pad.taps = 0 end
+        pad.taps, pad.last, pad.pawn = pad.taps + 1, now, self:get()
+    end, "gamepad flashlight")
+end
 
 local function snapshot(p)
     return {
@@ -231,10 +285,15 @@ local function tick()
         end
     end
     debugCommands(now)
+    padResolve(now)
     if not STEALTH.on then return end
     local player = U.alive(STEALTH.player, STEALTH.playerAddr) and STEALTH.player or nil
+    -- after a load the old pawn's address can be reused by another object: still the player?
+    if player and not onFoot(player) then STEALTH.player, STEALTH.playerAddr, player = nil, nil, nil end
     if not player then return end -- refreshed by the next NPC think
     local me = snapshot(player)
+    N.trackGrenades(now)
+    N.readShared(now)
     N.footsteps(me, now)
     N.process(A, player)
     local sum = A.tick(player, me, dt)
@@ -269,8 +328,8 @@ LoopAsync(cfg.Debug.TickMs, function()
 end)
 
 -- Keys -----------------------------------------------------------------------------
-local function toggleStealth()
-    local player = playerForKey()
+local function toggleStealth(ctx)
+    local player = playerForKey(ctx)
     if not player then return end -- on foot only
     STEALTH.on = not STEALTH.on
     A.on = STEALTH.on
@@ -279,12 +338,13 @@ local function toggleStealth()
         AL.releaseAll(player)
     end
     saveState()
+    publishOn()
     U.warn("stealth " .. (STEALTH.on and "ON" or "OFF"))
     HUD.say(STEALTH.on and "Stealth ON - enemies notice you gradually" or "Stealth OFF (vanilla)", player, true)
 end
 
-local function toggleSuppressor()
-    local player = playerForKey()
+local function toggleSuppressor(ctx)
+    local player = playerForKey(ctx)
     if not player then return end
     local text = N.toggleSuppressor(player)
     saveState()
@@ -292,8 +352,8 @@ local function toggleSuppressor()
     HUD.say(text, player, true)
 end
 
-local function cycleOrder()
-    local player = playerForKey()
+local function cycleOrder(ctx)
+    local player = playerForKey(ctx)
     if not player then return end
     local text = AL.cycle(player)
     U.log("key ally order: " .. text)

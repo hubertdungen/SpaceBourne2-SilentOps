@@ -6,14 +6,14 @@
 
   STATUS (tested 2026-10-30): the kill from behind and the refusals (too far, not behind) work,
   with a melee-type hit applied the way the knife applies it (the test save had no melee weapon).
-  Witnesses and found bodies are NOT TESTED YET.
+  Witnesses of a kill and found bodies verified in game on 2026-10-31.
 ]]
 
 local U = require("stealth.util")
 local G = require("stealth.gamedefs")
 local P = G.P
 
-local T = { bodies = {}, nextScan = 0 }
+local T = { bodies = {}, nextScan = 0, silent = {} }
 local MAX_BODIES = 40
 
 local function cfg() return STEALTH.cfg end
@@ -44,35 +44,62 @@ function T.tryTakedown(A, N, npc, damageType, causer)
     local d, ang = U.dist(np, pp), U.angleTo(nf, np, pp)
     if d > c.MaxDistance then return no(string.format("too far (%.1f m)", d / 100)) end
     if ang < c.BehindAngle then return no(string.format("not behind it (%.0f deg)", ang)) end
+    T.silent[U.addr(npc) or 0] = os.clock() -- before ForceToDead: OnDeadEvent may run inside it
     local ok = pcall(function() npc:ForceToDead() end) -- verified in game
     if not ok then return false end
     local n = cfg().Noise
-    N.emit(np, kind == "hammer" and n.HeavyTakedown or n.Takedown, "takedown", false)
+    N.emit(np, kind == "hammer" and n.HeavyTakedown or n.Takedown, "takedown", "suspect", n.HeardBump)
     U.log("takedown (" .. kind .. ")")
     return true
 end
 
--- Post-hook of Q1_Shooter_AI:OnDeadEvent: a body, a thud, and maybe witnesses.
-function T.onDeath(A, N, npc)
+-- Was this NPC just killed by a silent takedown?
+function T.wasSilent(npc)
+    local a = U.addr(npc)
+    local t = a and T.silent[a]
+    if t then T.silent[a] = nil end
+    return t ~= nil and os.clock() - t < 5
+end
+
+local function los(from, to)
+    local ok, v = pcall(function() return from.Controller:LineOfSightTo(to, { X = 0, Y = 0, Z = 0 }, false) end)
+    return ok and v == true
+end
+
+-- Post-hook of Q1_Shooter_AI:OnDeadEvent: a body, a thud, maybe a cry, and witnesses.
+--   Seeing a mate shot dead: weapon drawn, meter almost full, calls the others, maybe crouches
+--   for cover, without knowing where the shooter is (it hunts: the first movement draws fire).
+--   Seeing a mate knifed: the killer is right there, so if it can see you, combat.
+function T.onDeath(A, N, npc, player)
     local pos = U.location(npc)
     if not pos then return end
-    N.emit(pos, cfg().Noise.BodyFall, "body", false)
+    local silent = T.wasSilent(npc)
+    N.emit(pos, cfg().Noise.BodyFall, "body", "suspect", cfg().Noise.HeardBump)
+    if not silent then N.onPain(pos, true) end
     if cfg().Bodies.Enabled then
         if #T.bodies >= MAX_BODIES then table.remove(T.bodies, 1) end
         T.bodies[#T.bodies + 1] = { pos = pos, t = os.clock(), obj = npc, a = U.addr(npc), found = false }
     end
-    -- witnesses: managed NPCs that have the victim in view right now
-    local c = cfg().Takedown
-    local budget = cfg().Detection.MaxLineOfSightPerTick
+    local w = cfg().Witness
+    local d = cfg().Detection
+    local now = os.clock()
+    local budget = d.MaxLineOfSightPerTick
     for _, e in pairs(A.npcs) do
         if budget <= 0 then break end
-        if e.managed and e.pos and e.fwd and U.dist(e.pos, pos) < c.WitnessRange
-            and U.angleTo(e.fwd, e.pos, pos) <= cfg().Detection.PeripheralHalfAngle then
-            local w = A.objOf(e)
+        local extra = d.Senses.ExtraAngle[A.level(e, now)] or 0
+        if e.managed and e.pos and e.fwd and U.dist(e.pos, pos) < w.Range
+            and U.angleTo(e.fwd, e.pos, pos) <= d.PeripheralHalfAngle + extra then
+            local wo = A.objOf(e)
             budget = budget - 1
-            local ok, los = false, false
-            if w then ok, los = pcall(function() return w.Controller:LineOfSightTo(npc, { X = 0, Y = 0, Z = 0 }, false) end) end
-            if ok and los == true then A.search(e, pos, "saw a mate die") end
+            if wo and los(wo, npc) then
+                if silent and player and U.dist(e.pos, U.location(player)) < w.Range and los(wo, player) then
+                    A.alert(e, player, "saw a takedown")
+                else
+                    e.wantCover = math.random() < w.CoverChance
+                    A.hunt(e, pos, "saw a mate die", w.SawKillMeter)
+                    A.callHelp(e, pos, true, "mate called: man down")
+                end
+            end
         end
     end
 end
@@ -101,7 +128,9 @@ function T.tick(A, now)
                             seen = U.dist(e.pos, body.pos) < b.CloseRange -- body actor gone: only right next to it
                         end
                         if seen then
-                            A.search(e, body.pos, "found a body")
+                            -- more aware and calls for help, but not a full alert (no shooter seen)
+                            A.search(e, body.pos, "found a body", cfg().Witness.BodyMeter)
+                            A.callHelp(e, body.pos, false, "mate called: body found")
                             body.found = true
                             break
                         end

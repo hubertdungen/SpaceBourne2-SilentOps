@@ -8,7 +8,13 @@
   and runs its own sight model. When the NPC notices the player it is handed back to vanilla
   combat (switches restored, CheckForFirstFocus(player)).
 
-  STATUS (tested in game 2026-10-30): the switches, sight meter, handover, shout, losing them and
+  0.2 adds (DESIGN.md section 14): instant combat when you stand a few metres in front of an NPC,
+  "at least suspicious" when you stand in view far away, senses that sharpen with suspicion,
+  training (militia notice slower, elites faster and react faster), and hunting: an NPC that heard
+  gunfire or saw a mate die draws its weapon, searches towards it and reacts to the first movement.
+
+  STATUS (tested in game 2026-10-30 and 2026-10-31): the switches, sight meter, instant combat up
+  close, far notice, sharpened senses, hunting (weapon drawn), handover, shout, losing them and
   release on toggle-off all work. Anything not exercised yet is marked NOT TESTED YET.
 ]]
 
@@ -37,8 +43,11 @@ local function newEntry(a, npc)
         state = A.VANILLA, managed = false, meter = 0, stateAt = os.clock(),
         pos = nil, fwd = nil, lastKnown = nil, proxT = 0,
         orig = nil,              -- { deaf = bool, lock = bool } saved when first managed
-        perception = 1.0, rangeMul = 1.0, alertedUntil = 0,
+        perception = 1.0, rangeMul = 1.0, training = "Regular", alertedUntil = 0,
         logicStopped = false, moveUntil = 0,
+        hunting = false,         -- heard gunfire / saw a mate die: weapon drawn, first movement draws fire
+        drawn = false, crouched = false, -- poses set by the mod (restored when it calms down)
+        reactAt = nil,           -- spotted: hands over to combat at this time (reaction time)
     }
 end
 
@@ -73,15 +82,36 @@ local function rangeOf(npc)
     return c.SightRange
 end
 
--- Per-NPC perception (small doctrine table; does not depend on HTR).
+-- Training, same rule as HTR's doctrines (raiders = pirates, Tier 1 = militia, Tier 3+ = elite,
+-- else regulars). It scales how fast an NPC notices you, its "instant" distances and its
+-- reaction time. Does not need HTR.
+local function trainingOf(npc)
+    if U.get(npc, P.Raider, false) then return "Pirate" end
+    local tier = U.get(npc, P.Tier, 2)
+    if tier <= 1 then return "Militia" end
+    if tier >= 3 then return "Elite" end
+    return "Regular"
+end
+
 local function perceptionOf(npc)
     local c = cfg().Detection
-    local p, r = 1.0, 1.0
-    if U.get(npc, P.Raider, false) then p = c.Perception.Pirate
-    elseif U.get(npc, P.Tier, 2) <= 1 then p = c.Perception.Militia
-    elseif U.get(npc, P.Tier, 2) >= 3 then p = c.Perception.Elite end
-    if U.get(npc, P.Sniper, false) then r = c.SniperRangeFactor end
-    return p, r
+    local t = trainingOf(npc)
+    local r = U.get(npc, P.Sniper, false) and c.SniperRangeFactor or 1.0
+    return c.Perception[t] or 1.0, r, t
+end
+
+-- Alertness level of an NPC: 1 calm, 2 wary (suspicious, or alerted in the last minutes),
+-- 3 searching or hunting. Indexes the Detection.Senses tables.
+local function level(e, now)
+    if e.state == A.SEARCHING or e.hunting then return 3 end
+    if e.state == A.SUSPICIOUS or now < e.alertedUntil then return 2 end
+    return 1
+end
+A.level = level
+
+-- Hearing factor of an NPC right now (noise.lua).
+function A.hearing(e, now)
+    return cfg().Detection.Senses.Hearing[level(e, now)] or 1.0
 end
 
 -- Switches ----------------------------------------------------------------------
@@ -142,9 +172,42 @@ local function look(e, npc)
     e.lookAt = e.lastKnown
 end
 
-local function release(e, npc)
+-- Weapon drawn: the ALS "aiming" pose vanilla uses when an NPC spots a target (SetRotationMode(2)).
+-- The eyes stay off, so nothing fires (HTR resumes fire only from the eye hook).
+local function draw(e, npc, on)
+    if on == e.drawn then return end
+    if on then
+        -- patrols walk in mode 0 (VelocityDirection); an NPC back from a fight is still aiming
+        local r = U.get(npc, P.RotationMode, 0)
+        e.origRot = (r == G.Rotation.Aiming) and 0 or r
+    end
+    pcall(function() npc:SetRotationMode(on and G.Rotation.Aiming or (e.origRot or 0)) end)
+    e.drawn = on
+end
+
+-- Taking cover without knowing where the shooter is: crouch where it stands (vanilla's own
+-- cover routine needs a target).
+local function crouch(e, npc, on)
+    if on == e.crouched then return end
+    pcall(function() npc:SetStance(on and G.Stance.Crouching or G.Stance.Standing) end)
+    e.crouched = on
+end
+
+-- Back to patrol: behaviour tree on, weapon lowered, standing.
+local function calm(e, npc)
+    restartLogic(e, npc)
+    draw(e, npc, false)
+    crouch(e, npc, false)
+    e.hunting, e.reactAt, e.wantCover = false, nil, false
+    setState(e, A.CALM)
+end
+
+-- keepPose: handing over to combat (vanilla sets its own pose); else restore ours.
+local function release(e, npc, keepPose)
     if not e.managed then return end
     restartLogic(e, npc)
+    if not keepPose then draw(e, npc, false); crouch(e, npc, false) end
+    e.drawn, e.crouched, e.hunting, e.reactAt, e.wantCover = false, false, false, nil, false
     if e.deafOn then
         U.set(npc, P.Deaf, e.orig and e.orig.deaf or false)
         U.set(npc, P.MeleeLock, e.orig and e.orig.lock or false)
@@ -205,7 +268,7 @@ function A.track(npc, early)
             A.compromised, A.lastContact = true, os.clock()
         elseif ok and not U.get(npc, P.Deaf, false) then
             -- (wave / drop-ship spawns come with AttackPlayerWhenSpawn already true: left vanilla)
-            e.perception, e.rangeMul = perceptionOf(npc)
+            e.perception, e.rangeMul, e.training = perceptionOf(npc)
             manage(e, npc)
             e.state, e.stateAt, e.meter = A.CALM, os.clock(), 0
         end
@@ -228,7 +291,7 @@ A.objOf = objOf
 function A.alert(e, player, reason)
     local npc = objOf(e)
     if not npc then return end
-    release(e, npc)
+    release(e, npc, true)
     setState(e, A.ALERT)
     e.everAlert, e.meter = true, 1
     -- InCombat? = true: HTR 0.4.2 switches it to alert sight at its next think (<= 1 s) and keeps
@@ -258,24 +321,61 @@ function A.shout(src, player)
     end
 end
 
--- Something is wrong, position unknown (loud noise, body, mate hit).
-function A.search(e, where, why)
+-- Something is wrong, position unknown (body found, mate calling, moans). meter: at least this.
+function A.search(e, where, why, meter)
     if U.Verbose then U.log("search " .. tostring(e.a) .. ": " .. tostring(why)) end
-    if e.state == A.ALERT or e.state == A.VANILLA then return end
+    if e.state == A.ALERT or e.state == A.VANILLA or e.reactAt then return end
     e.lastKnown = where or e.lastKnown
-    e.meter = math.max(e.meter, cfg().Detection.SuspiciousAt)
+    e.meter = math.min(0.99, math.max(e.meter, meter or cfg().Detection.SuspiciousAt))
     e.alertedUntil = os.clock() + cfg().Detection.AlertedMemorySeconds
-    setState(e, A.SEARCHING)
-    e.moveUntil = 0 -- pick a search point on the next tick
+    if e.state ~= A.SEARCHING then
+        setState(e, A.SEARCHING)
+        e.moveUntil = 0 -- pick a search point on the next tick
+    else
+        e.stateAt = os.clock() -- a new clue: search longer
+    end
+end
+
+-- Gunfire heard or a mate killed in front of it: search towards it with the weapon drawn; the
+-- first movement it sees draws fire. Never a full alert by itself: it does not know where you are.
+function A.hunt(e, where, why, meter)
+    if e.state == A.ALERT or e.state == A.VANILLA or e.reactAt then return end
+    A.search(e, where, why, meter or 0.8)
+    if not e.hunting and U.Verbose then U.log("hunt " .. tostring(e.a) .. ": " .. tostring(why)) end
+    e.hunting = true
 end
 
 -- A heard or half-seen event.
 function A.suspect(e, where, bump, why)
     if U.Verbose then U.log("suspect " .. tostring(e.a) .. ": " .. tostring(why)) end
-    if e.state == A.ALERT or e.state == A.VANILLA then return end
+    if e.state == A.ALERT or e.state == A.VANILLA or e.reactAt then return end
     e.lastKnown = where or e.lastKnown
     e.meter = math.min(0.99, e.meter + (bump or 0))
     if e.state == A.CALM and e.meter >= cfg().Detection.SuspiciousAt then setState(e, A.SUSPICIOUS) end
+end
+
+-- Gunfire, explosions, a turret: each one heard adds to the meter (closer = more). Past
+-- HuntAt the NPC hunts; more shots keep pushing it, so the picture becomes obvious.
+function A.hearAlarm(e, where, bump, why)
+    if e.state == A.ALERT or e.state == A.VANILLA or e.reactAt then return end
+    e.lastKnown = where or e.lastKnown
+    e.meter = math.min(0.99, e.meter + bump)
+    if e.meter >= cfg().Detection.HuntAt then
+        A.hunt(e, where, why, e.meter)
+    else
+        A.suspect(e, where, 0, why)
+    end
+end
+
+-- A mate calls for help (witness, body found): managed NPCs nearby hear the call, no sight needed.
+function A.callHelp(src, where, hunt, why)
+    local c = cfg().Witness
+    if not (src.pos and c.CallRadius > 0) then return end
+    for _, e in pairs(A.npcs) do
+        if e ~= src and e.managed and e.pos and U.dist(e.pos, src.pos) < c.CallRadius then
+            if hunt then A.hunt(e, where, why, c.CalledMeter) else A.search(e, where, why, c.CalledMeter) end
+        end
+    end
 end
 
 -- Losing them: ALERT NPCs go back to searching (verified in game).
@@ -300,41 +400,76 @@ local function unalert(e)
     if U.valid(A.patrolBT) then pcall(function() npc.Controller:RunBehaviorTree(A.patrolBT) end) end
     setState(e, A.CALM) -- leave ALERT first: search() ignores ALERT NPCs
     e.meter = 0
-    A.search(e, e.lastKnown, "lost contact")
+    -- still on edge after a fight: weapon drawn, the first movement it sees draws fire
+    A.hunt(e, e.lastKnown, "lost contact", cfg().Detection.HuntAt)
 end
 
 -- Sight model (pure maths) ----------------------------------------------------------
 -- me: snapshot of the player { pos, stance, speed, gait, light }. Returns the meter fill rate
 -- per second if the NPC could see the player (line of sight is checked by the caller), 0 if not,
 -- plus a flag for "instant" alert.
-function A.sightRate(e, me)
+function A.sightRate(e, me, now)
     local c = cfg().Detection
     if not (e.pos and e.fwd and me.pos) then return 0, false end
+    now = now or os.clock()
+    local lv = level(e, now)
+    local s = c.Senses
     local d = U.dist(e.pos, me.pos)
-    local searching = e.state == A.SEARCHING or os.clock() < e.alertedUntil
-    local base = (e.baseRange or c.SightRange) * (searching and c.SearchingRangeFactor or 1.0)
-    local rangeMul = e.rangeMul * (me.light and c.FlashlightRangeFactor or 1.0)
-    if d > base * rangeMul then return 0, false end
+    -- suspicion sharpens the senses: farther and wider while wary / searching
+    local base = (e.baseRange or c.SightRange) * e.rangeMul * (s.Range[lv] or 1.0)
+        * (me.light and c.FlashlightRangeFactor or 1.0)
+    local crouched = me.stance == G.Stance.Crouching
+    if d > base * (crouched and 1.0 or c.FarNoticeFactor) then return 0, false end
     local ang = U.angleTo(e.fwd, e.pos, me.pos)
+    local extra = s.ExtraAngle[lv] or 0
+    local central = ang <= c.CentralHalfAngle + extra
     local cone = 0
-    if ang <= c.CentralHalfAngle then cone = 1.0 elseif ang <= c.PeripheralHalfAngle then cone = c.PeripheralFactor end
+    if central then cone = 1.0 elseif ang <= c.PeripheralHalfAngle + extra then cone = c.PeripheralFactor end
     if cone <= 0 then return 0, false end
+    local train = e.perception
     -- Realism (tuned in game): posture and light decide HOW FAR you can be made out; movement
-    -- mostly decides HOW FAST attention builds. Standing still in the open is still seen.
-    local stance = (me.stance == G.Stance.Crouching) and c.Stance.Crouching or c.Stance.Standing
+    -- mostly decides HOW FAST attention builds. Standing in the open is always noticed.
+    local stance = crouched and c.Stance.Crouching or c.Stance.Standing
     local key
     if me.speed < c.StillSpeed then key = "Still"
     elseif me.gait == G.Gait.Sprinting then key = "Sprint"
     elseif me.gait == G.Gait.Running then key = "Run"
     else key = "Walk" end
     local light = me.light and c.FlashlightFactor or 1.0
-    local effRange = base * rangeMul * stance * c.MovementRange[key] * c.AmbientLight
-    if d >= effRange then return 0, false end
-    local perception = e.perception * (searching and c.AlertedPerception or 1.0)
-    local instant = d < c.InstantAlertRange and cone >= 1.0 and not (me.stance == G.Stance.Crouching and key == "Still")
+    local effRange = base * stance * c.MovementRange[key] * c.AmbientLight
+    if d >= effRange then
+        -- Standing figure in plain view beyond the normal range: "someone is over there" -
+        -- suspicious, it goes to look, but it cannot be sure from here (meter capped).
+        if not crouched and central then return c.StandingNoticePerSec * train, false, c.InvestigateAt end
+        return 0, false
+    end
+    -- In plain view a few metres away there is nothing to "notice": it is combat at once.
+    local instant
+    if crouched then
+        instant = central and key ~= "Still" and d < c.InstantRangeCrouched * train
+    else
+        instant = (central and d < c.InstantRange * train) or d < c.InstantRangeSide * train
+    end
+    -- Hunting (heard gunfire, saw a mate die): the first movement it sees draws fire.
+    if e.hunting and key ~= "Still" and (not crouched or d < effRange * 0.5) then instant = true end
     local rate = U.lerp(c.FillNearPerSec, c.FillFarPerSec, d / effRange) * cone * stance * c.Movement[key] * light
-        * c.AmbientLight * perception
+        * c.AmbientLight * train * (s.Speed[lv] or 1.0)
+    -- Standing in view, however far: at least suspicious within a couple of seconds.
+    if not crouched then rate = math.max(rate, c.StandingNoticePerSec * cone * train) end
     return rate, instant
+end
+
+-- Reaction time once spotted (training): the NPC turns to you and raises its weapon, then
+-- combat starts. Elites react almost at once, militia hesitate.
+local function react(e, npc, player, why, now)
+    local delay = cfg().Detection.ReactionSeconds[e.training] or 0.3
+    if delay <= 0 then A.alert(e, player, why); return end
+    e.reactAt, e.reactWhy, e.meter = now + delay, why, 1
+    stopLogic(e, npc)
+    pcall(function() npc.CharacterMovement:StopMovementImmediately() end)
+    pcall(function() npc.Controller:K2_SetFocus(player) end)
+    draw(e, npc, true)
+    if U.Verbose then U.log(string.format("spotted %s (%s, %s): reacting in %.2f s", tostring(e.a), why, e.training, delay)) end
 end
 
 -- Investigation movement: StopLogic + focal point + MoveToLocation (verified in game).
@@ -359,7 +494,7 @@ end
 function A.tick(player, me, dt)
     local c = cfg().Detection
     local now = os.clock()
-    local sum = { suspicious = 0, searching = 0, alert = 0, maxMeter = 0 }
+    local sum = { suspicious = 0, searching = 0, hunting = 0, alert = 0, maxMeter = 0 }
     local losBudget = c.MaxLineOfSightPerTick
     for a, e in pairs(A.npcs) do
         local npc = objOf(e)
@@ -367,9 +502,16 @@ function A.tick(player, me, dt)
             if now - e.seenAt > FRESH then A.npcs[a] = nil; A.count = math.max(0, A.count - 1) end
         elseif e.state == A.ALERT then
             if U.get(npc, P.CanSee, false) then A.lastContact = now end
+        elseif e.managed and e.reactAt then
+            sum.maxMeter = 1
+            if now >= e.reactAt then e.reactAt = nil; A.alert(e, player, e.reactWhy) end
         elseif e.managed and me.pos and e.pos and U.dist(e.pos, me.pos) < c.BubbleRadius then
             e.pos, e.fwd = U.location(npc) or e.pos, U.forward(npc) or e.fwd
-            local rate, instant = A.sightRate(e, me)
+            if e.hunting then
+                draw(e, npc, true)
+                if e.wantCover then crouch(e, npc, true) end
+            end
+            local rate, instant, cap = A.sightRate(e, me, now)
             local seen = false
             if rate > 0 and losBudget > 0 then
                 losBudget = losBudget - 1
@@ -383,27 +525,33 @@ function A.tick(player, me, dt)
             local quiet = me.stance == G.Stance.Crouching and me.speed < c.StillSpeed
             if d < c.ProximityRange and not quiet then e.proxT = e.proxT + dt else e.proxT = 0 end
             if (seen and instant) or e.proxT > c.ProximitySeconds then
-                A.alert(e, player, "close")
+                react(e, npc, player, seen and instant and "in plain view" or "close", now)
             elseif seen then
                 e.meter = e.meter + rate * dt
+                if cap then e.meter = math.max(math.min(e.meter, cap), e.meter - rate * dt) end
                 e.lastKnown = me.pos
-                if e.meter >= 1.0 then A.alert(e, player, "seen")
+                if e.meter >= 1.0 then react(e, npc, player, "seen", now)
                 elseif e.state == A.CALM and e.meter >= c.SuspiciousAt then setState(e, A.SUSPICIOUS) end
             else
                 e.meter = math.max(0, e.meter - c.DecayPerSec * dt)
             end
-            if (e.state == A.SUSPICIOUS and e.meter >= c.InvestigateAt) or e.state == A.SEARCHING then
+            if e.reactAt then
+                -- spotted this tick: it stays facing you until it reacts
+            elseif (e.state == A.SUSPICIOUS and e.meter >= c.InvestigateAt) or e.state == A.SEARCHING then
                 investigate(e, npc, now)
             elseif e.state == A.SUSPICIOUS then
                 look(e, npc)
             end
-            if e.state == A.SUSPICIOUS and e.meter <= 0.02 then
-                restartLogic(e, npc); setState(e, A.CALM)
+            if e.reactAt then
+                -- nothing
+            elseif e.state == A.SUSPICIOUS and e.meter <= 0.02 then
+                calm(e, npc)
             elseif e.state == A.SEARCHING and now - e.stateAt > c.SearchSeconds and e.meter < c.SuspiciousAt then
-                restartLogic(e, npc); setState(e, A.CALM)
+                calm(e, npc)
             end
             if e.state == A.SUSPICIOUS then sum.suspicious = sum.suspicious + 1 end
             if e.state == A.SEARCHING then sum.searching = sum.searching + 1 end
+            if e.hunting then sum.hunting = sum.hunting + 1 end
             if e.state ~= A.ALERT then sum.maxMeter = math.max(sum.maxMeter, e.meter) end
         end
     end
@@ -442,9 +590,10 @@ function A.debugLines(me)
         if e.pos and me.pos and e.state ~= A.VANILLA then
             local d = U.dist(e.pos, me.pos)
             if d < cfg().Detection.BubbleRadius then
-                out[#out + 1] = string.format("  %s %s m=%.2f d=%.0fm range=%.0fm managed=%s ang=%.0f rate=%.2f seen=%s%s",
+                out[#out + 1] = string.format("  %s %s m=%.2f d=%.0fm range=%.0fm managed=%s ang=%.0f rate=%.2f seen=%s %s lv=%d hunt=%s drawn=%s%s",
                     tostring(a), e.state, e.meter, d / 100, (e.baseRange or 0) / 100, tostring(e.managed), e.dbgAng or -1,
-                    e.dbgRate or -1, tostring(e.dbgSeen), e.dbgErr and (" err=" .. e.dbgErr) or "")
+                    e.dbgRate or -1, tostring(e.dbgSeen), tostring(e.training), level(e, os.clock()), tostring(e.hunting),
+                    tostring(e.drawn), e.dbgErr and (" err=" .. e.dbgErr) or "")
             end
         end
     end

@@ -1,11 +1,12 @@
 # Silent Ops: design
 
-Status: **first in-game tests passed (2026-10-30)**, not released. Written from the decompiled
-Blueprints, then implemented and tested in the game with HTR 0.4.5: section 13.3 has the
-results, the fixes they led to, and what is still untested.
+Status: **0.1.0 released (2026-10-30); 0.2.0 tested in game (2026-10-31, section 16.11)**. Written from the
+decompiled Blueprints, then implemented and tested in the game with HTR 0.4.5: section 13.3 has
+the 0.1 results, section 16 the 0.2 changes (from the user's play-test) and their results.
 
 Product name: **Silent Ops** (UE4SS mod folder `SilentOps`; the design called it "HTR Stealth"). It is a separate mod that
-works with or without Hardcore Tactical Realism (HTR). It ships **off by default**.
+works with or without Hardcore Tactical Realism (HTR). 0.1 shipped off by default; **0.2 is on by
+default** (the user: whoever installs it wants it on; the key stays for situations).
 
 ---------------------------------------------------------------------------------------------
 
@@ -718,3 +719,152 @@ Still **not tested**: a real knife swing, witnesses and found bodies, the squad'
 * Companions that follow you (no vanilla follow logic to reuse).
 * Cancelling a vanilla alert after it starts (post-hooks only) — avoided by design.
 * Changing the `'Enemy'` tag (would break aim assist, crosshair, turrets, abilities).
+
+---------------------------------------------------------------------------------------------
+
+## 16. Version 0.2 (user play-test feedback, 2026-10-31)
+
+The user played 0.1 and asked for these changes (backlog section B, plus gamepad from D).
+
+### 16.1 On by default
+
+`Enabled = true`, and on at **every game start**: the toggle (Shift+F4) is for a situation, not a
+setting. `RememberToggle = true` keeps the last choice between sessions (0.1 behaviour). This also
+ignores the `stealth=off` that 0.1 wrote into the state file whenever a key was pressed while off.
+
+### 16.2 Detection realism
+
+| Wish | How (awareness.lua) |
+|---|---|
+| Standing a few metres away: combat at once | `InstantRange` 8 m standing in the central cone, `InstantRangeSide` 3 m anywhere it can see, `InstantRangeCrouched` 3 m crouched and moving in front. Proximity: 1.5 m for 1 s (was 1.2 m, 1.5 s). All scaled by training. |
+| Far away and standing: at least suspicious | Standing in view always fills at least `StandingNoticePerSec` (0.2/s, about 2 s to suspicious). Beyond the sight range, up to `FarNoticeFactor` (1.6x), a standing figure in the central cone makes the NPC suspicious and walk over, but the meter is capped at `InvestigateAt` there (not sure enough to open fire from that far). `MovementRange.Still` is now 1.0: standing still in the open is seen at the full range. |
+| Crouched depends on distance and light | Unchanged: crouched shrinks the range (0.6) and the fill; the flashlight multiplies both. |
+| A gunshot is much more suspicious than a far silhouette, and grows | Each shot heard adds `ShotAlarm[class]` x (0.5..1 by distance) to the meter. Past `HuntAt` (0.5) the NPC hunts (16.3); more shots keep adding. Hearing alone caps at 0.99: it never knows exactly where you are. |
+| Suspicion sharpens sight (range / FOV) and hearing | Three levels: calm, wary (suspicious, or alerted in the last 120 s), searching / hunting. `Senses`: range x1 / 1.4 / 1.8, both cones +0 / 15 / 30 degrees, hearing x1 / 1.3 / 1.6, fill speed x1 / 1.4 / 1.8. |
+| Trained troops notice faster and draw / shoot faster | Same classification as HTR's doctrines. `Perception` (fill speed and instant distances): militia 0.75, pirates 0.85, regulars 1.0, elites 1.35. `ReactionSeconds` once spotted (it turns to you and raises its weapon, then combat starts): elites 0.15 s, regulars 0.4, pirates 0.5, militia 0.7. After that HTR's doctrines (settle time, spread) decide how fast and well they shoot. |
+
+### 16.3 Gunshots by weapon class, and hunting
+
+Radius / alarm per shot: pistol 45 m / 0.5, SMG 60 m / 0.6, rifle 65 m / 0.6, shotgun 75 m / 0.7,
+DMR 85 m / 0.75, sniper 100 m / 0.8, grenade 120 m / 0.95; turret 65 m / 0.7; energy weapons
+25 m / 0.3, beams 15 m / 0.2. Walls still halve the radius of your own shots.
+
+**Hunting**: an NPC that heard enough gunfire (or saw a mate shot dead, or lost you after a fight)
+draws its weapon (ALS aiming pose, `SetRotationMode(2)`, what vanilla does on spotting a target),
+searches towards the sound with sharpened senses, and **the first movement it sees draws fire**
+(instant, standing or moving; crouched only within half its range). Standing still or crouched
+still: it still fills fast. The eyes stay off while it hunts, so it cannot fire at nothing (HTR
+resumes fire only from the eye hook). When the search ends it lowers its weapon and patrols again.
+
+### 16.4 Witnesses
+
+| Event | Reaction |
+|---|---|
+| Sees a mate shot dead | Hunts (meter 0.95), calls mates within 25 m (they hunt too, meter 0.6), and half the time crouches for cover where it stands (vanilla's cover routine needs a target). It does not know where the shooter is. |
+| Sees a mate knifed (silent takedown) | The killer is right there: if it can see you, combat. Otherwise as above. |
+| Finds a body without having heard anything | Searches (meter 0.75, sharpened senses) and calls mates within 25 m to search too. Not a full alert. |
+| Near a wounded mate | A shooter hit by gunfire cries out (15 m); one shot dead too. Mates who hear it come to check. A silent takedown makes no cry. |
+
+### 16.5 Suppressors: pistols only
+
+`Suppressor.Eligible = { pistol = true }` (0.1 allowed SMGs, rifles, DMRs and snipers; those saved
+suppressors now do nothing). A suppressor makes the pistol longer and front-heavy:
+`SpreadDegrees` 0.4 extra random spread per shot (post-hook of `CalculateTrace`, the per-shot aim
+trace, writing its `End Trace Point` out parameter) and `VelocityFactor` 0.92 (re-applied per shot,
+because the weapon resets `MuzzleSpeed` when equipped).
+
+Sound: the game plays shots through FMOD events (`WeaponShotSound`) or the weapon FX component
+(`Play_OneShot`); UE4SS cannot play an external sound file without a pak asset. See 16.9 for what
+was found in game. A 3D suppressor model needs a pak: skipped.
+
+### 16.6 Light (research only)
+
+The dumped Blueprints have no light level and no time-of-day value; sampling the scene's brightness
+would need a scene capture and a render-target read every few frames (costly). Dropped:
+`AmbientLight` stays a manual factor.
+
+### 16.7 Turrets
+
+Post-hooks on the player's perk turret (`Player_PerkTurret_C`, also the turret Tactical Engineering
+deploys): `ReceiveBeginPlay` = deploying makes a 12 m noise; `JustShoot` (10 rounds a second) = a
+loud 65 m noise every half second (alarm 0.7, hunting).
+
+Shared noise channel of the set (agreed with Tactical Engineering): TE publishes
+`ModRef:SetSharedVariable("SB2R_Noise", "id,x,y,z,radius_cm,kind,time;...")` with kinds `deploy`,
+`pack`, `turret_fire`. Silent Ops reads it once a second and uses only `pack` (the hooks above
+already hear deploying and firing, also without TE). Silent Ops publishes
+`SetSharedVariable("SilentOps_On", bool)`; while it is true TE skips its own vanilla alert.
+
+### 16.8 Grenades
+
+`Master_Hand_Weapon:GranedeLuncherPressed` (the launcher, which spawns `Grenade_launched_C`): the
+launch is a 15 m thump, and 1.5 s later the blast (120 m, alarm 0.95) is heard 15 m ahead of where
+you aimed. The grenade itself cannot be followed: in game its actor stays at the map origin while
+the visible grenade flies (UE4SS `NotifyOnNewObject` saw it, but its location never changed).
+
+### 16.9 Gamepad (backlog D)
+
+Quick presses of the **flashlight** button (`InpActEvt_GPC_ToggleLight`, the gamepad-only light
+action; the keyboard light key is another action): **2 presses** = squad order, **4 presses** =
+stealth on / off, **4 presses crouched** = suppressor. An even number of presses leaves the light as
+it was (2 presses is a short flash, like a signal). Resolved 0.45 s after the last press. No clash
+with HTR's 4 presses of "switch camera".
+
+### 16.10 HUD
+
+Each on-screen message plays the game's "can't do that" alarm (`GUI_Cant`, "tu-tu-tu"), and with
+stealth on all the time 0.1 was too chatty. 0.2:
+
+* `Hud.Quiet` (on): the same trick as HTR 0.4.6, the `GUI_Cant` SoundWave's `Volume` is set to 0 for
+  2 s around the mod's own messages; the game's own warnings keep their sound. Both mods may mute
+  it, so the real volume is shared through `ModRef` `SB2R_CantVolume` and a volume of 0 is never
+  taken as the real one (the alarm can never be left silent). Verified in game with HTR 0.4.7:
+  2.0 -> 0 during a message -> 2.0.
+* Shows only "Someone is suspicious", "Enemies searching", "Enemies on alert - weapons drawn",
+  "COMPROMISED", "Lost them" and key presses, at most one every 4 s; no "Hidden" line and no
+  percentages (`Hud.ShowHidden` brings "Hidden" back).
+
+### 16.11 Results of the 0.2 in-game tests (2026-10-31)
+
+Setup: HTR 0.4.7, the user's on-foot save copied to a test slot (deleted afterwards), SB2 HOTAS
+off, the user's Silent Ops 0.1 parked (its `enabled.txt` renamed: UE4SS starts any folder that has
+one, even when mods.txt says 0), a dev console, enemies spawned near the player, squad ignoring
+them. The PC was locked (no real input); actions were driven from the console. Only the
+ahead-left direction of the test spot has open ground (elsewhere spawned enemies fell off).
+
+| Test | Result |
+|---|---|
+| Load | OK: 0.2.0 starts with stealth on, all 21 hooks registered, no errors |
+| Standing still, 6 m in front | OK: "in plain view", combat after the regular's 0.4 s reaction |
+| Standing still, 20 m | OK: suspicious after ~2 s, combat after ~3 s |
+| Standing still, 32 m (beyond the 25 m relaxed sight) | OK: suspicious (far notice); its sharpened sight then brought you in range: combat after ~5 s |
+| Crouched still, 15 m | OK: not seen |
+| Unsuppressed pistol, enemy 16 m away facing away | OK: 1st shot suspicious (0.41), 2nd shot hunting; it turned towards the sound, saw you standing, combat |
+| Same at 32 m, you crouched, 3 shots | OK: suspicious after the 2nd, hunting after the 3rd: weapon drawn (aiming pose), eyes still off, no firing; walked towards the sound, saw you crouched at 24 m, combat at 21 m |
+| Suppressed pistol, enemy 9 m away | OK: "something odd" only (meter 0.15), no hunting |
+| Witness sees a mate shot dead | OK: hunts (0.95, weapon drawn) and calls; the called mate hunts too; both hear the dying cry; the mate then spotted you |
+| Silent takedown, then a mate finds the body | OK: no cry; "found a body" (search 0.75), calls a mate (search, weapon not drawn); then saw you next to the body |
+| Suppressor spread | OK: without 0.00° mean; with 0.25° mean, 0.35° max (0.4° cone); bullet speed 1.06 -> 0.975 (x0.92). Writing the `CalculateTrace` out parameter works |
+| Turret | OK: deploying not heard at 29 m (12 m radius); firing heard at 27 m: hunting, then combat |
+| Grenade | OK after a fix: launcher thump heard at 18 m; blast logged 1.5 s later 15 m ahead of the aim (first version followed the grenade actor, which stays at the map origin) |
+| Gamepad (input event called from the console) | OK: 2 presses = squad order; 4 crouched = suppressor removed; 4 = stealth off, 4 = on; the light ends as it was |
+| Quiet HUD | OK: `GUI_Cant` volume 2.0 -> 0 during a message -> 2.0 |
+| Frames, 8 enemies, 34 s | Mod on: 53 fps, median 19 ms, p99 32 ms, max 47 ms, no spikes. Mod not loaded: 54 fps, median 19 ms, p99 32 ms, max 39 ms. No difference (the max is the game creating its warning box once). |
+
+Seen in the tests:
+
+* The first on-screen message of a session costs ~23 ms once (the game creates its warning box).
+* The ally order key costs ~70 ms (one squad lookup), on the press only (as in 0.1).
+* One **hang** during a first frames run: 3 enemies firing at a god-mode player, the console's frame
+  recorder hooked on every character tick; all game threads waiting, no crash dump, last log lines
+  normal. Not repeated in the second run. 0.1's tests had one similar unexplained hang with the same
+  console setup. No evidence that Silent Ops causes it.
+
+After the tests, two guards were added (HTR's finding: after a load an old pointer's address can
+be reused by another object): the PlayerController is never kept, and a kept player pointer that
+is no longer a `Q1_Character_C` is dropped. Smoke test of that final build (05:48): loads without
+errors, stealth off / on, ally order, "in plain view" at 6 m.
+
+Not tested: real gamepad and keyboard presses (PC locked; the 0.1 keys are unchanged), witness
+cover crouch (50% chance, not rolled), the `pack` channel event (TE not installed), companions,
+the squad's quiet follow walk over distance.
