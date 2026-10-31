@@ -11,9 +11,9 @@ return {
     -- situation where you want vanilla behaviour). RememberToggle = true keeps your last choice.
     -- Keys: a UE4SS key name, optionally with Shift: "F4", "Shift+F4". "" disables a key.
     -- They follow the realism set's shared key plan: only Shift as a modifier (on foot Ctrl opens
-    -- the map and Alt crouches), never F1 F2 F5 F6 F8 F10 F12 (squad orders, quick save, quick
-    -- load, bug report, Steam screenshot). Plain keys stay quiet while Shift is held, so Shift+F4
-    -- does not also fit a suppressor. Stealth keys work on foot only.
+    -- the map and Alt crouches), never F1 F2 F5 F6 F8 F10 F11 F12 (squad orders, quick save, quick
+    -- load, bug report, fullscreen, Steam screenshot). Plain keys stay quiet while Shift is held, so
+    -- Shift+F4 does not also fit a suppressor, and Shift+F3 stays HTR's. Stealth keys work on foot only.
     Enabled        = true,
     RememberToggle = false,
     ToggleKey      = "Shift+F4",
@@ -27,8 +27,20 @@ return {
         CentralHalfAngle    = 35,   -- full attention inside this cone
         PeripheralHalfAngle = 75,   -- side vision up to here...
         PeripheralFactor    = 0.35, -- ...at this fraction
-        -- Posture: a crouched silhouette is made out at a shorter range and noticed more slowly.
-        Stance        = { Standing = 1.0, Crouching = 0.6 },
+        -- Posture: crouching is not invisibility. In the open a crouched figure is made out almost
+        -- as far (Stance = range) but noticed more slowly (StanceFill). What really hides you is
+        -- cover: exposure = how much of your head / chest / knees the NPC can see (checked from
+        -- your side with line-of-sight traces), and a wall right behind you breaking your outline.
+        Stance        = { Standing = 1.0, Crouching = 0.85 },
+        StanceFill    = { Standing = 1.0, Crouching = 0.55 },
+        ExposureRangeMin = 0.35,  -- range factor with only one body part visible (all visible: 1.0)
+        ExposurePoints = { Standing = { 70, 20, -50 }, Crouching = { 30, 0, -35 } }, -- cm above your centre
+        BackdropFactor   = 0.8,   -- a wall or cover right behind you (silhouette broken)
+        BackdropDistance = 150,
+        -- Noticing vs identifying: in the far part of its range (beyond this fraction) the NPC sees
+        -- "something" and its meter stops at IdentifyCap: it walks over to look before it is sure.
+        IdentifyFraction = { Standing = 0.75, Crouching = 0.5 },
+        IdentifyCap      = 0.85,
         -- Movement: motion draws the eye. Movement = how fast suspicion builds,
         -- MovementRange = how far away it still counts.
         Movement      = { Still = 0.5, Walk = 1.0, Run = 1.5, Sprint = 2.2 },
@@ -54,15 +66,21 @@ return {
         InstantRangeCrouched = 300,  -- crouched and moving, in front of it
         ProximityRange       = 150,  -- right next to an NPC (any side)...
         ProximitySeconds     = 1.0,  -- ...for this long, not crouched and still: noticed
-        -- Suspicion sharpens the senses. Three levels: calm, wary (suspicious or alerted in the
-        -- last AlertedMemorySeconds), searching / hunting.
+        -- Alert levels (Cooper colours): Blue relaxed, Green normal attention, Yellow suspicious,
+        -- Orange danger known (hunting, weapon drawn), Red combat. The level sharpens or dulls the
+        -- senses (columns: Blue, Green, Yellow, Orange).
         Senses = {
-            Range      = { 1.0, 1.4, 1.8 }, -- sight range factor
-            ExtraAngle = { 0, 15, 30 },     -- wider attention (degrees added to both cones)
-            Hearing    = { 1.0, 1.3, 1.6 }, -- hearing range factor
-            Speed      = { 1.0, 1.4, 1.8 }, -- how fast suspicion builds
+            Range      = { 0.85, 1.0, 1.3, 1.7 }, -- sight range factor
+            ExtraAngle = { -5, 0, 15, 30 },       -- attention cone (degrees added to both cones)
+            Hearing    = { 0.85, 1.0, 1.3, 1.6 }, -- hearing range factor
+            Speed      = { 0.8, 1.0, 1.4, 1.8 },  -- how fast suspicion builds
         },
-        AlertedMemorySeconds = 120,
+        -- Resting level by training; any evidence raises it to Green for AlertedMemorySeconds, and
+        -- everyone within AreaRadius of a fight stays Green for AreaSeconds.
+        Baseline = { Pirate = "Blue", Militia = "Blue", Regular = "Blue", Elite = "Green" },
+        AlertedMemorySeconds = 300,
+        AreaRadius  = 6000,
+        AreaSeconds = 300,
         SearchRadius         = 600,  -- searching NPCs check points this far around the last clue
         InvestigateStepSeconds = 6,
         SearchSeconds        = 40,   -- then they give up and go back to patrol
@@ -75,6 +93,9 @@ return {
         -- to raise the weapon and open fire once they have spotted you.
         Perception      = { Pirate = 0.85, Militia = 0.75, Regular = 1.0, Elite = 1.35 },
         ReactionSeconds = { Pirate = 0.5, Militia = 0.7, Regular = 0.4, Elite = 0.15 },
+        -- Weapon posture: Blue / Green lowered; from Yellow it raises and aims at the suspected spot
+        -- after this delay (half of it in Orange), without firing; it fires only at Red.
+        RaiseSeconds    = { Pirate = 1.0, Militia = 1.4, Regular = 0.8, Elite = 0.3 },
         AffectBosses         = false, -- bosses and robot tanks always behave as in vanilla
         AffectTanks          = false,
         MaxLineOfSightPerTick = 8,    -- performance cap
@@ -115,6 +136,17 @@ return {
         -- A suppressor makes the pistol longer and front-heavy:
         SpreadDegrees  = 0.4,   -- extra random spread per shot
         VelocityFactor = 0.92,  -- bullets a little slower (1.0 = no change)
+        FitSeconds     = 3.5,   -- screwing it on / off takes this long; the pistol cannot fire meanwhile
+        ShowModel      = false, -- EXPERIMENTAL, does not work yet: a plain tube on the pistol's muzzle
+                                -- (the game draws the pistol in your hand from a part not found yet)
+        ModelLength    = 15,    -- cm
+        ModelDiameter  = 4,     -- cm
+        -- The game has no suppressed shot sound and mods cannot add one without a pak: the pistol's
+        -- own shot cues play quieter and a little higher (no distant echo) while the suppressor is on.
+        SoundVolume        = 0.3,  -- the near shot
+        SoundDistantVolume = 0,    -- the distant echo (a suppressed pistol has none)
+        SoundTailVolume    = 0.2,  -- the tail
+        SoundPitch         = 1.2,
     },
 
     Takedown = {
@@ -143,7 +175,12 @@ return {
         AutoWeaponsFree = true,  -- when you are spotted, quiet allies open fire
         FollowDistance  = 400,   -- squad walks back to its formation slot beyond this
         CatchUpDistance = 3000,  -- beyond this the game's own rescue teleports the soldier
+        SquadVisible    = true,  -- enemies can notice your quiet squad soldiers too
     },
+
+    -- Place and noise: stations (machinery, crowds) dull hearing, dungeons are quiet. A gunshot or
+    -- blast masks quiet noises (footsteps, impacts, suppressed shots) for MaskSeconds.
+    Environment = { Hearing = { Station = 0.8, Dungeon = 1.1 }, MaskSeconds = 5, MaskFactor = 0.6 },
 
     -- Gamepad: quick presses of the flashlight button.
     --   2 presses: squad order   4 presses: stealth on / off   4 presses crouched: suppressor

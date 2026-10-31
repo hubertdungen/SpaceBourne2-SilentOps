@@ -87,11 +87,13 @@ G.P = {
     -- player
     Stance = "Stance", Gait = "Gait", Speed = "Speed", MovementState = "MovementState", ViewMode = "ViewMode",
     LightOn = "LightOn?", MeleeOn = "MeleeAttackOn?", Weapon = "CurrentWeapon", MeleeWeapon = "As Master Melee Weapon",
+    WhereIsPlayer = "WhereIsPlayer", -- ALS_Base, see G.Where
     -- squad soldier
     MainTimer = "MainTimer", Order = "Ground Squad Orders", GoalActor = "GoalActor", SoldierDead = "NPCDead",
     Injured = "InInjuredMode",
     -- weapon
     WeaponData = "Weapon_Data", MuzzleSpeed = "MuzzleSpeed",
+    Reloading = "Reloading", -- the fire loop checks it first: true = no shots (used while fitting a suppressor)
 }
 -- Item data of the weapon in hand (same fields HTR's gear bonus reads)
 G.Item = {
@@ -113,5 +115,7 @@ G.Stance = { Standing = 0, Crouching = 1 }
 G.Gait = { Walking = 0, Running = 1, Sprinting = 2 }
 G.Order = { FireAtWill = 0, Cover = 1, GetOut = 2 }        -- GroundSoldierOrders
 G.Rotation = { VelocityDirection = 0, LookingDirection = 1, Aiming = 2 } -- ALS rotation modes
+-- WhereIsPlayer (Tactical Engineering's dump): which kind of place you are in
+G.Where = { Space = 0, PlanetSurface = 1, Dungeon = 2, Wormhole = 3, StationTrans = 4, StationSubLevel = 5 }
 
 return G

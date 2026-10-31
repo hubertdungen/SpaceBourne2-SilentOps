@@ -100,18 +100,34 @@ local function perceptionOf(npc)
     return c.Perception[t] or 1.0, r, t
 end
 
--- Alertness level of an NPC: 1 calm, 2 wary (suspicious, or alerted in the last minutes),
--- 3 searching or hunting. Indexes the Detection.Senses tables.
+-- Alert level (Cooper colours, DESIGN.md 17.1): 1 Blue relaxed, 2 Green normal attention,
+-- 3 Yellow suspicious, 4 Orange danger known (hunting), 5 Red combat. Levels 1-4 index the
+-- Detection.Senses tables. Blue/Green is the NPC's baseline (training), raised to Green for a few
+-- minutes after any evidence (alertedUntil) and near a recent fight.
+A.BLUE, A.GREEN, A.YELLOW, A.ORANGE, A.RED = 1, 2, 3, 4, 5
+A.fights = {} -- { pos, t } where NPCs went Red recently (max 8)
+local function nearFight(e, now)
+    local c = cfg().Detection
+    if not e.pos then return false end
+    for _, f in ipairs(A.fights) do
+        if now - f.t < c.AreaSeconds and U.dist(e.pos, f.pos) < c.AreaRadius then return true end
+    end
+    return false
+end
 local function level(e, now)
-    if e.state == A.SEARCHING or e.hunting then return 3 end
-    if e.state == A.SUSPICIOUS or now < e.alertedUntil then return 2 end
-    return 1
+    if e.state == A.ALERT then return A.RED end
+    if e.hunting then return A.ORANGE end
+    if e.state == A.SUSPICIOUS or e.state == A.SEARCHING then return A.YELLOW end
+    if (e.baseline or A.BLUE) >= A.GREEN or now < e.alertedUntil or nearFight(e, now) then return A.GREEN end
+    return A.BLUE
 end
 A.level = level
+local function senses(e, now) return math.min(level(e, now), A.ORANGE) end
+A.senses = senses
 
 -- Hearing factor of an NPC right now (noise.lua).
 function A.hearing(e, now)
-    return cfg().Detection.Senses.Hearing[level(e, now)] or 1.0
+    return cfg().Detection.Senses.Hearing[senses(e, now)] or 1.0
 end
 
 -- Switches ----------------------------------------------------------------------
@@ -198,7 +214,7 @@ local function calm(e, npc)
     restartLogic(e, npc)
     draw(e, npc, false)
     crouch(e, npc, false)
-    e.hunting, e.reactAt, e.wantCover = false, nil, false
+    e.hunting, e.reactAt, e.wantCover, e.raiseAt = false, nil, false, nil
     setState(e, A.CALM)
 end
 
@@ -207,7 +223,7 @@ local function release(e, npc, keepPose)
     if not e.managed then return end
     restartLogic(e, npc)
     if not keepPose then draw(e, npc, false); crouch(e, npc, false) end
-    e.drawn, e.crouched, e.hunting, e.reactAt, e.wantCover = false, false, false, nil, false
+    e.drawn, e.crouched, e.hunting, e.reactAt, e.wantCover, e.raiseAt = false, false, false, nil, false, nil
     if e.deafOn then
         U.set(npc, P.Deaf, e.orig and e.orig.deaf or false)
         U.set(npc, P.MeleeLock, e.orig and e.orig.lock or false)
@@ -269,6 +285,7 @@ function A.track(npc, early)
         elseif ok and not U.get(npc, P.Deaf, false) then
             -- (wave / drop-ship spawns come with AttackPlayerWhenSpawn already true: left vanilla)
             e.perception, e.rangeMul, e.training = perceptionOf(npc)
+            e.baseline = (cfg().Detection.Baseline[e.training] == "Green") and A.GREEN or A.BLUE
             manage(e, npc)
             e.state, e.stateAt, e.meter = A.CALM, os.clock(), 0
         end
@@ -299,6 +316,11 @@ function A.alert(e, player, reason)
     U.bbSetBool(npc, BB.InCombat, true)
     if player then pcall(function() npc:CheckForFirstFocus(player) end) end
     A.compromised, A.lastContact = true, os.clock()
+    -- a fight here: everyone around stays at least Green for a while (DESIGN.md 17.5)
+    if e.pos then
+        if #A.fights >= 8 then table.remove(A.fights, 1) end
+        A.fights[#A.fights + 1] = { pos = e.pos, t = os.clock() }
+    end
     U.log("ALERT " .. tostring(e.a) .. " (" .. tostring(reason) .. ")")
     if reason ~= "shout" and cfg().Detection.Shout then A.shout(e, player) end
 end
@@ -405,17 +427,20 @@ local function unalert(e)
 end
 
 -- Sight model (pure maths) ----------------------------------------------------------
--- me: snapshot of the player { pos, stance, speed, gait, light }. Returns the meter fill rate
--- per second if the NPC could see the player (line of sight is checked by the caller), 0 if not,
--- plus a flag for "instant" alert.
-function A.sightRate(e, me, now)
+-- me: snapshot of the target { pos, stance, speed, gait, light }. exp: exposure 0..1 (share of the
+-- target's head / chest / knees the NPC can see, DESIGN.md 17.3); backdrop: 1.0 open, less with a
+-- wall right behind the target. Returns the meter fill rate per second (0 if it cannot be made
+-- out), a flag for "instant" (combat at once) and a meter cap (noticed but not identified).
+function A.sightRate(e, me, now, exp, backdrop)
     local c = cfg().Detection
     if not (e.pos and e.fwd and me.pos) then return 0, false end
     now = now or os.clock()
-    local lv = level(e, now)
+    exp = exp or 1.0
+    if exp <= 0 then return 0, false end
+    local lv = senses(e, now)
     local s = c.Senses
     local d = U.dist(e.pos, me.pos)
-    -- suspicion sharpens the senses: farther and wider while wary / searching
+    -- the alert level sharpens or dulls the senses: farther and wider when uneasy
     local base = (e.baseRange or c.SightRange) * e.rangeMul * (s.Range[lv] or 1.0)
         * (me.light and c.FlashlightRangeFactor or 1.0)
     local crouched = me.stance == G.Stance.Crouching
@@ -427,47 +452,83 @@ function A.sightRate(e, me, now)
     if central then cone = 1.0 elseif ang <= c.PeripheralHalfAngle + extra then cone = c.PeripheralFactor end
     if cone <= 0 then return 0, false end
     local train = e.perception
-    -- Realism (tuned in game): posture and light decide HOW FAR you can be made out; movement
-    -- mostly decides HOW FAST attention builds. Standing in the open is always noticed.
-    local stance = crouched and c.Stance.Crouching or c.Stance.Standing
+    local exposed = exp >= 0.66 -- most of the body in view
     local key
     if me.speed < c.StillSpeed then key = "Still"
     elseif me.gait == G.Gait.Sprinting then key = "Sprint"
     elseif me.gait == G.Gait.Running then key = "Run"
     else key = "Walk" end
     local light = me.light and c.FlashlightFactor or 1.0
-    local effRange = base * stance * c.MovementRange[key] * c.AmbientLight
+    -- Crouching mostly makes you slower to notice; being covered (low exposure) or against a
+    -- backdrop is what shortens the distance you can be made out at.
+    local stanceRange = crouched and c.Stance.Crouching or c.Stance.Standing
+    local stanceFill = crouched and c.StanceFill.Crouching or c.StanceFill.Standing
+    local expRange = c.ExposureRangeMin + (1 - c.ExposureRangeMin) * exp
+    local effRange = base * stanceRange * c.MovementRange[key] * c.AmbientLight * expRange * (backdrop or 1.0)
     if d >= effRange then
         -- Standing figure in plain view beyond the normal range: "someone is over there" -
         -- suspicious, it goes to look, but it cannot be sure from here (meter capped).
-        if not crouched and central then return c.StandingNoticePerSec * train, false, c.InvestigateAt end
+        if not crouched and central and exposed then return c.StandingNoticePerSec * train, false, c.InvestigateAt end
         return 0, false
     end
     -- In plain view a few metres away there is nothing to "notice": it is combat at once.
-    local instant
-    if crouched then
-        instant = central and key ~= "Still" and d < c.InstantRangeCrouched * train
-    else
-        instant = (central and d < c.InstantRange * train) or d < c.InstantRangeSide * train
+    local instant = false
+    if exposed then
+        if crouched then
+            instant = central and key ~= "Still" and d < c.InstantRangeCrouched * train
+        else
+            instant = (central and d < c.InstantRange * train) or d < c.InstantRangeSide * train
+        end
+        -- Orange (hunting): the first movement it sees draws fire.
+        if e.hunting and key ~= "Still" and (not crouched or d < effRange * 0.5) then instant = true end
     end
-    -- Hunting (heard gunfire, saw a mate die): the first movement it sees draws fire.
-    if e.hunting and key ~= "Still" and (not crouched or d < effRange * 0.5) then instant = true end
-    local rate = U.lerp(c.FillNearPerSec, c.FillFarPerSec, d / effRange) * cone * stance * c.Movement[key] * light
-        * c.AmbientLight * train * (s.Speed[lv] or 1.0)
+    local rate = U.lerp(c.FillNearPerSec, c.FillFarPerSec, d / effRange) * cone * stanceFill * c.Movement[key] * light
+        * c.AmbientLight * train * (s.Speed[lv] or 1.0) * exp
     -- Standing in view, however far: at least suspicious within a couple of seconds.
-    if not crouched then rate = math.max(rate, c.StandingNoticePerSec * cone * train) end
-    return rate, instant
+    if not crouched then rate = math.max(rate, c.StandingNoticePerSec * cone * train * exp) end
+    -- Noticing vs identifying: in the far part of its range it sees "something", not yet "an
+    -- enemy": the meter stops short of combat (it walks over to look).
+    local idf = crouched and c.IdentifyFraction.Crouching or c.IdentifyFraction.Standing
+    local cap = (d > effRange * idf) and c.IdentifyCap or nil
+    return rate, instant, cap
+end
+
+-- Exposure of the target to an NPC (DESIGN.md 17.3), seen from the target's side: the player's
+-- controller checks LineOfSightTo(npc, point) from the target's head, chest and knees (each 0.015 ms,
+-- the target's own pawn is ignored), plus one point 1.5 m behind it (blocked = a wall or cover
+-- right behind breaks the silhouette). Returns exposure 0..1 and the backdrop factor.
+local function exposure(pc, npc, me, e)
+    local c = cfg().Detection
+    local pts = (me.stance == G.Stance.Crouching) and c.ExposurePoints.Crouching or c.ExposurePoints.Standing
+    local n, seenZ = 0, nil
+    for _, z in ipairs(pts) do
+        local ok, v = pcall(function() return pc:LineOfSightTo(npc, { X = me.pos.X, Y = me.pos.Y, Z = me.pos.Z + z }, false) end)
+        if ok and v == true then n = n + 1; seenZ = seenZ or z end
+    end
+    local exp = n / #pts
+    local back = 1.0
+    if exp > 0 and c.BackdropFactor < 1 then
+        local dx, dy = me.pos.X - e.pos.X, me.pos.Y - e.pos.Y
+        local len = math.sqrt(dx * dx + dy * dy)
+        if len > 1 then
+            local bd = c.BackdropDistance / len
+            local p = { X = me.pos.X + dx * bd, Y = me.pos.Y + dy * bd, Z = me.pos.Z + (seenZ or 0) }
+            local ok, v = pcall(function() return pc:LineOfSightTo(npc, p, false) end)
+            if ok and v ~= true then back = c.BackdropFactor end
+        end
+    end
+    return exp, back
 end
 
 -- Reaction time once spotted (training): the NPC turns to you and raises its weapon, then
 -- combat starts. Elites react almost at once, militia hesitate.
-local function react(e, npc, player, why, now)
+local function react(e, npc, target, why, now)
     local delay = cfg().Detection.ReactionSeconds[e.training] or 0.3
-    if delay <= 0 then A.alert(e, player, why); return end
-    e.reactAt, e.reactWhy, e.meter = now + delay, why, 1
+    if delay <= 0 then A.alert(e, target, why); return end
+    e.reactAt, e.reactWhy, e.reactTarget, e.meter = now + delay, why, target, 1
     stopLogic(e, npc)
     pcall(function() npc.CharacterMovement:StopMovementImmediately() end)
-    pcall(function() npc.Controller:K2_SetFocus(player) end)
+    pcall(function() npc.Controller:K2_SetFocus(target) end)
     draw(e, npc, true)
     if U.Verbose then U.log(string.format("spotted %s (%s, %s): reacting in %.2f s", tostring(e.a), why, e.training, delay)) end
 end
@@ -489,13 +550,16 @@ local function investigate(e, npc, now)
 end
 
 -- Tick ------------------------------------------------------------------------------
--- Called ~5 times a second on the game thread. player: live pawn. Returns a HUD summary.
--- LineOfSightTo costs ~0.015 ms; kept references read invalid once collected (verified in game).
-function A.tick(player, me, dt)
+-- Called ~5 times a second on the game thread. player: live pawn; pc: its controller (read fresh
+-- each tick); squad: snapshots of quiet squad soldiers { obj, pos, stance, speed, gait } or {}.
+-- Returns a HUD summary. LineOfSightTo costs ~0.015 ms; kept references read invalid once
+-- collected (verified in game).
+function A.tick(player, me, dt, squad, pc)
     local c = cfg().Detection
     local now = os.clock()
-    local sum = { suspicious = 0, searching = 0, hunting = 0, alert = 0, maxMeter = 0 }
+    local sum = { suspicious = 0, searching = 0, hunting = 0, alert = 0, maxMeter = 0, level = A.BLUE }
     local losBudget = c.MaxLineOfSightPerTick
+    squad = squad or {}
     for a, e in pairs(A.npcs) do
         local npc = objOf(e)
         if not npc then
@@ -504,20 +568,44 @@ function A.tick(player, me, dt)
             if U.get(npc, P.CanSee, false) then A.lastContact = now end
         elseif e.managed and e.reactAt then
             sum.maxMeter = 1
-            if now >= e.reactAt then e.reactAt = nil; A.alert(e, player, e.reactWhy) end
+            if now >= e.reactAt then
+                local tgt = U.valid(e.reactTarget) and e.reactTarget or player
+                e.reactAt, e.reactTarget = nil, nil
+                A.alert(e, tgt, e.reactWhy)
+            end
         elseif e.managed and me.pos and e.pos and U.dist(e.pos, me.pos) < c.BubbleRadius then
             e.pos, e.fwd = U.location(npc) or e.pos, U.forward(npc) or e.fwd
-            if e.hunting then
-                draw(e, npc, true)
-                if e.wantCover then crouch(e, npc, true) end
+            -- Weapon posture follows the level (DESIGN.md 17.8): from Yellow it raises its weapon and
+            -- aims where it suspects you, after a delay set by training; it fires only at Red.
+            if e.hunting or e.state == A.SUSPICIOUS or e.state == A.SEARCHING then
+                if not e.drawn then
+                    e.raiseAt = e.raiseAt or (now + (c.RaiseSeconds[e.training] or 0.8) * (e.hunting and 0.5 or 1.0))
+                    if now >= e.raiseAt then draw(e, npc, true) end
+                end
+                if e.hunting and e.wantCover then crouch(e, npc, true) end
             end
-            local rate, instant, cap = A.sightRate(e, me, now)
-            local seen = false
-            if rate > 0 and losBudget > 0 then
+            -- you: in range and in its view at all? then how much of you it can see (exposure)
+            local rate, instant, cap = A.sightRate(e, me, now, 1.0, 1.0)
+            local seen, target, tpos, why = false, player, me.pos, "seen"
+            if rate > 0 and losBudget > 0 and pc then
                 losBudget = losBudget - 1
-                local ok, v = pcall(function() return npc.Controller:LineOfSightTo(player, { X = 0, Y = 0, Z = 0 }, false) end)
-                seen = ok and v == true
-                if U.Verbose and not ok then e.dbgErr = tostring(v) end
+                local exp, back = exposure(pc, npc, me, e)
+                e.exposure = exp
+                rate, instant, cap = A.sightRate(e, me, now, exp, back)
+                seen = rate > 0
+            end
+            -- your quiet squad: one soldier per NPC per tick (round robin), plain line of sight
+            if not seen and #squad > 0 and losBudget > 0 then
+                e.sqIdx = (e.sqIdx or 0) % #squad + 1
+                local s = squad[e.sqIdx]
+                local sr, si, sc = A.sightRate(e, s, now, 1.0, 1.0)
+                if sr > 0 then
+                    losBudget = losBudget - 1
+                    local ok, v = pcall(function() return npc.Controller:LineOfSightTo(s.obj, { X = 0, Y = 0, Z = 0 }, false) end)
+                    if ok and v == true then
+                        seen, rate, instant, cap, target, tpos, why = true, sr, si, sc, s.obj, s.pos, "saw your squad"
+                    end
+                end
             end
             if U.Verbose then e.dbgRate, e.dbgSeen, e.dbgAng = rate, seen, U.angleTo(e.fwd, e.pos, me.pos) end
             -- proximity: someone right next to you notices unless you are crouched and still
@@ -525,12 +613,13 @@ function A.tick(player, me, dt)
             local quiet = me.stance == G.Stance.Crouching and me.speed < c.StillSpeed
             if d < c.ProximityRange and not quiet then e.proxT = e.proxT + dt else e.proxT = 0 end
             if (seen and instant) or e.proxT > c.ProximitySeconds then
-                react(e, npc, player, seen and instant and "in plain view" or "close", now)
+                if e.proxT > c.ProximitySeconds then target = player end
+                react(e, npc, target, seen and instant and "in plain view" or "close", now)
             elseif seen then
                 e.meter = e.meter + rate * dt
                 if cap then e.meter = math.max(math.min(e.meter, cap), e.meter - rate * dt) end
-                e.lastKnown = me.pos
-                if e.meter >= 1.0 then react(e, npc, player, "seen", now)
+                e.lastKnown = tpos
+                if e.meter >= 1.0 then react(e, npc, target, why, now)
                 elseif e.state == A.CALM and e.meter >= c.SuspiciousAt then setState(e, A.SUSPICIOUS) end
             else
                 e.meter = math.max(0, e.meter - c.DecayPerSec * dt)
@@ -553,10 +642,12 @@ function A.tick(player, me, dt)
             if e.state == A.SEARCHING then sum.searching = sum.searching + 1 end
             if e.hunting then sum.hunting = sum.hunting + 1 end
             if e.state ~= A.ALERT then sum.maxMeter = math.max(sum.maxMeter, e.meter) end
+            sum.level = math.max(sum.level, level(e, now))
         end
     end
     -- count ALERT NPCs after this tick's changes (alerts and shouts above)
     for _, e in pairs(A.npcs) do if e.state == A.ALERT then sum.alert = sum.alert + 1 end end
+    if sum.alert > 0 then sum.level = A.RED end
     -- losing them
     if A.compromised and sum.alert > 0 and now - A.lastContact > c.LoseSeconds then
         for _, e in pairs(A.npcs) do if e.state == A.ALERT then unalert(e) end end
@@ -590,10 +681,11 @@ function A.debugLines(me)
         if e.pos and me.pos and e.state ~= A.VANILLA then
             local d = U.dist(e.pos, me.pos)
             if d < cfg().Detection.BubbleRadius then
-                out[#out + 1] = string.format("  %s %s m=%.2f d=%.0fm range=%.0fm managed=%s ang=%.0f rate=%.2f seen=%s %s lv=%d hunt=%s drawn=%s%s",
-                    tostring(a), e.state, e.meter, d / 100, (e.baseRange or 0) / 100, tostring(e.managed), e.dbgAng or -1,
-                    e.dbgRate or -1, tostring(e.dbgSeen), tostring(e.training), level(e, os.clock()), tostring(e.hunting),
-                    tostring(e.drawn), e.dbgErr and (" err=" .. e.dbgErr) or "")
+                local COL = { "blue", "green", "yellow", "orange", "red" }
+                out[#out + 1] = string.format("  %s %s %s m=%.2f d=%.0fm range=%.0fm exp=%.2f managed=%s ang=%.0f rate=%.2f seen=%s %s hunt=%s drawn=%s%s",
+                    tostring(a), COL[level(e, os.clock())] or "?", e.state, e.meter, d / 100, (e.baseRange or 0) / 100,
+                    e.exposure or -1, tostring(e.managed), e.dbgAng or -1, e.dbgRate or -1, tostring(e.dbgSeen),
+                    tostring(e.training), tostring(e.hunting), tostring(e.drawn), e.dbgErr and (" err=" .. e.dbgErr) or "")
             end
         end
     end

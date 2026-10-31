@@ -8,7 +8,7 @@ where they are looking, your stance, how fast you move, your flashlight and how 
 are. Gunshots carry and put enemies on edge, a suppressed pistol thumps instead of cracking, a knife
 from behind kills silently, and your squad can follow you quietly without opening fire.
 
-Version 0.2.0 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6) · UE4SS Lua mod · works alone or with
+Version 0.3.0 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6) · UE4SS Lua mod · works alone or with
 [Hardcore Tactical Realism](https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism).
 
 ## What it does
@@ -16,13 +16,15 @@ Version 0.2.0 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6
 - **Suspicion before alarm.** An unaware enemy builds a suspicion meter instead of spotting you
   at once. Suspicious enemies stop and turn to look; at higher suspicion they walk over to check;
   when the meter fills they raise their weapon and combat starts.
-- **Realistic sight.** Standing a few metres in front of an enemy is combat at once. Standing in
-  its view far away makes it suspicious at least, and it comes to look. Crouching shrinks your
-  silhouette (shorter range, slower to notice), moving draws the eye, sprinting draws it most,
-  and the flashlight gives you away from farther. Side vision is weaker; enemies do not see
-  behind them.
-- **Suspicion sharpens the senses.** A suspicious or searching enemy sees farther, pays wider
-  attention, hears better and notices faster.
+- **Alert levels.** Every enemy is Blue (relaxed), Green (normal attention), Yellow
+  (suspicious), Orange (danger known) or Red (combat). Levels rise and fall with evidence, and
+  sharpen or dull sight and hearing. From Yellow an enemy raises its weapon and aims where it
+  suspects you; it fires only at Red.
+- **Realistic sight.** Standing a few metres in front of an enemy is combat at once. Far away it
+  sees "something" and walks over to look before it is sure. Crouching is not invisibility: in
+  the open you are still noticed, only slower. What hides you is cover: how much of your head,
+  chest and knees it can see, and a wall behind you breaking your outline. Moving draws the eye,
+  the flashlight gives you away. Side vision is weaker; enemies do not see behind them.
 - **Training.** Militia notice you slower and hesitate before firing; elites notice faster and
   react almost at once. Harder, not impossible.
 - **Gunshots by weapon class.** Pistol < SMG / rifle < shotgun < DMR < sniper < grenade: how far
@@ -31,9 +33,10 @@ Version 0.2.0 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6
 - **Witnesses.** See a mate shot dead: weapon drawn, calls the others, maybe crouches for cover.
   Find a body without hearing anything: searches and calls for help. Wounded or dying enemies cry
   out and mates come to check. A silent takedown makes no cry.
-- **Suppressors on pistols.** Fit one with a key: the shot is heard as "something odd" ~12 m
-  away instead of an alarm 45 m away. The pistol gets a little less accurate and its bullet a
-  little slower. Remembered per weapon.
+- **Suppressors on pistols.** Fitting one takes 3.5 s (no shooting meanwhile). Enemies hear the
+  shot as "something odd" ~12 m away instead of an alarm 45 m away, and you hear it a little
+  quieter. The pistol gets a little less accurate and its bullet a little slower. Remembered per
+  weapon.
 - **Silent takedowns.** A melee hit from behind on an unaware enemy kills at once, without an
   alarm. From the front or the side it is a normal hit and the enemy shouts for help.
 - **Searching and losing them.** Break line of sight long enough and alerted enemies lose you,
@@ -55,12 +58,12 @@ Version 0.2.0 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6
 
 ## Install
 
-1. Download `SilentOps-0.2.0.zip` from the
+1. Download `SilentOps-0.3.0.zip` from the
    [releases](https://github.com/hubertdungen/SpaceBourne2-SilentOps/releases).
 2. Extract it into the game folder
    (`...\steamapps\common\SpaceBourne 2\`). It adds
    `SB2\Binaries\Win64\Mods\SilentOps\` (the `enabled.txt` inside turns it on).
-   Updating from 0.1: extract over it and let it replace the files.
+   Updating: extract over it and let it replace the files.
 3. Play. Stealth is on; **Shift+F4** on foot switches it off for the session.
 
 Manual install: copy the `SilentOps` folder from this repository into
@@ -102,7 +105,9 @@ Edit `Mods\SilentOps\scripts\config.lua` (every line is optional). The main ones
 
 ## Status and known limits
 
-0.2 was tested in game on 2026-10-31 with HTR 0.4.7. Each of these worked:
+0.3 was tested in game on 2026-10-31 with HTR 0.4.8: the alert levels, crouching noticed in the
+open, weapon posture, the suppressor fitting time, and frame times (98 fps with 8 enemies around,
+no measurable cost). 0.2 was tested with HTR 0.4.7. Each of these worked:
 
 - combat at once up close, and noticing at 20 m and 32 m;
 - unseen when crouched at 15 m;
@@ -131,8 +136,8 @@ Known limits:
   flashlight counts.
 - An enemy that spawns right in front of you can still spot you instantly (vanilla).
 - No new animations: takedowns use the normal melee swing, which the game shows in third person.
-- The suppressed shot sound you hear does not change (the game has no suppressed sound, and
-  UE4SS cannot play a new sound file without a pak). A 3D suppressor model would need a pak too.
+- The suppressed shot only sounds a little quieter: the game has no suppressed sound, and a new
+  one would need a pak. There is no visible suppressor on the pistol yet.
 - A grenade's blast is placed about 15 m ahead of where you aimed, 1.5 s after the launch (the
   game gives mods no way to follow the grenade itself).
 - No light level: the game gives mods none, and measuring the picture's brightness would cost

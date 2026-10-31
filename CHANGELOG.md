@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.3.0 — 2026-10-31
+
+A deeper awareness model (DESIGN.md, section 17).
+
+- **Alert levels**: every enemy is Blue (relaxed), Green (normal attention), Yellow
+  (suspicious), Orange (danger known, weapon drawn) or Red (combat). They rise and fall with
+  evidence; never straight from "saw something" to combat, except in plain view up close.
+  - The level sharpens or dulls sight, attention and hearing.
+  - Militia, pirates and regulars rest at Blue, elites at Green.
+  - Enemies stay Green for minutes after anything odd, and near a recent fight.
+- **Crouching is not invisibility**. Crouched and moving in the open, an enemy facing you at
+  ~15 m finds it odd (Yellow) and walks over. Keep moving or let it get close and it ends in
+  combat.
+- **Cover**: what hides you is how much of you is exposed. Line-of-sight checks from your head,
+  chest and knees (the game gives mods no light level, so this stands in for it). A wall right
+  behind you breaks your outline.
+- **Noticing vs identifying**: far away an enemy sees "something" and walks over to look before
+  it is sure.
+- **Environment**: stations (machinery, crowds) dull hearing, dungeons are quiet. A gunshot
+  masks footsteps and suppressed shots for a few seconds.
+- **Your squad can give you away**: enemies notice quiet squad soldiers in the open too.
+- Other mods can read the highest alert level near you (`SB2R_AlertLevel`, 0 Blue .. 4 Red).
+- **Weapon posture**: from Yellow an enemy raises its weapon and aims where it suspects you,
+  without firing; it fires only at Red. Elites raise it fast (0.3 s), militia slowly (1.4 s).
+- **Fitting a suppressor takes 3.5 s**: the pistol cannot fire meanwhile, and the screen says
+  so.
+- **Suppressed shot sound**: the pistol's own shot plays quieter and a little higher, with no
+  distant echo. The difference is slight. The game has no suppressed sound, and a real one
+  would need a pak.
+- **Visible suppressor**: not working yet (off). The engine's tube attaches, but not to the
+  pistol you see in your hand.
+- F11 (fullscreen) is refused as a key too.
+
 ## 0.2.0 — 2026-10-31
 
 Changes from the first play-test.

@@ -21,6 +21,7 @@ local G = require("stealth.gamedefs")
 local P = G.P
 
 local N = { queue = {}, suppressed = {}, nextStep = 0, grenades = {}, turretAt = {} }
+local looksAt = 0
 local MAX_QUEUE = 32
 
 local function cfg() return STEALTH.cfg end
@@ -28,6 +29,8 @@ local function cfg() return STEALTH.cfg end
 -- Queue a noise. react: "hunt", "search" or "suspect"; bump: meter added when heard up close.
 function N.emit(pos, radius, kind, react, bump)
     if not pos or radius <= 0 or #N.queue >= MAX_QUEUE then return end
+    -- a loud noise masks quiet ones for a few seconds (DESIGN.md 17.5)
+    if react == "hunt" then N.maskUntil = os.clock() + (cfg().Environment.MaskSeconds or 5) end
     N.queue[#N.queue + 1] = { pos = pos, r = radius, kind = kind, react = react or "suspect", bump = bump }
 end
 
@@ -79,22 +82,42 @@ function N.isSuppressed(weapon)
     return k.on
 end
 
--- Key press: fit / remove the suppressor on the weapon in hand. Returns a HUD text.
+-- Key press: start screwing the suppressor on / off the weapon in hand. It takes
+-- Suppressor.FitSeconds; meanwhile the weapon cannot fire (its own Reloading flag, which the fire
+-- loop checks first) and the change applies when done (N.tickFitting). Returns a HUD text.
+N.fitting = nil
 function N.toggleSuppressor(player)
+    if N.fitting then return "Busy with the suppressor" end
     local w = weaponOf(player)
     if not w then return "No weapon in hand" end
     local kind = N.kindOf(w)
     if not cfg().Suppressor.Eligible[kind] then return "Only pistols take a suppressor" end
     local key = N.itemKey(w)
-    keyCache, keyCount = {}, 0
-    if N.suppressed[key] then
-        N.suppressed[key] = nil
-        N.applyVelocity(w, false)
-        return "Suppressor removed"
+    local fit = not N.suppressed[key]
+    local secs = cfg().Suppressor.FitSeconds or 0
+    N.fitting = { w = w, a = U.addr(w), key = key, fit = fit, at = os.clock() + secs }
+    if secs <= 0 then return N.tickFitting(os.clock()) end
+    U.set(w, P.Reloading, true)
+    return string.format("%s suppressor... (%.0f s)", fit and "Fitting" or "Removing", secs)
+end
+
+-- From the tick: finish the fitting. Returns a HUD text when done, else nil.
+function N.tickFitting(now)
+    local f = N.fitting
+    if not f then return nil end
+    local alive = U.alive(f.w, f.a)
+    if alive and now < f.at then
+        U.set(f.w, P.Reloading, true) -- keep the weapon blocked (a reload could clear it)
+        return nil
     end
-    N.suppressed[key] = true
-    N.applyVelocity(w, true)
-    return "Suppressor fitted"
+    N.fitting = nil
+    if not alive then return "Suppressor: interrupted" end -- weapon changed
+    U.set(f.w, P.Reloading, false)
+    keyCache, keyCount = {}, 0
+    N.suppressed[f.key] = f.fit or nil
+    N.applyVelocity(f.w, f.fit)
+    looksAt = 0 -- show / hide the model at once
+    return f.fit and "Suppressor fitted" or "Suppressor removed"
 end
 
 -- Slower bullets with a suppressor. The weapon's init resets MuzzleSpeed on every equip, so this
@@ -143,6 +166,106 @@ function N.onTrace(weapon, startP, endP)
     local qx, qy, qz = ry * fz - rz * fy, rz * fx - rx * fz, rx * fy - ry * fx
     local c1, c2 = r * math.cos(a), r * math.sin(a)
     endP:set({ X = e.X + rx * c1 + qx * c2, Y = e.Y + ry * c1 + qy * c2, Z = e.Z + rz * c1 + qz * c2 })
+end
+
+-- Visible suppressor and quieter shot (DESIGN.md 17.9), from the tick, on the weapon in hand:
+--   model: the engine's cylinder (cooked into SB2) attached to the muzzle (EBBarrel, where shots
+--          start), Suppressor.ModelLength x ModelDiameter cm, the pistol's own material; shown
+--          only while a suppressor is fitted, removed on swap / holster / death / load.
+--   sound: the pistol's own shot cues play quieter and higher while the suppressed pistol is
+--          in hand (see setSound). No new sound asset can be added without a pak.
+local CYL, SMC = "/Engine/BasicShapes/Cylinder.Cylinder", "/Script/Engine.StaticMeshComponent"
+local model = { comp = nil, a = nil, cyl = nil, smc = nil, missing = false }
+local sound = { a = nil }
+local function dropModel()
+    if model.comp then pcall(function() model.comp:K2_DestroyComponent(model.comp) end) end
+    model.comp, model.a = nil, nil
+end
+-- The pistol you see is the character's own PistolSM (the weapon actor's mesh is a hidden copy;
+-- verified in game: a cylinder on the weapon actor lay on the floor). Its "Muzzle" socket points
+-- along the barrel; the tube follows the pistol's visibility.
+local function addModel(player)
+    local c = cfg().Suppressor
+    if model.missing then return end
+    if not U.valid(model.cyl) then
+        model.cyl = StaticFindObject(CYL) -- once (a miss costs ~37 ms)
+        if not U.valid(model.cyl) then model.missing = true; U.warn("engine cylinder not found: no suppressor model"); return end
+    end
+    if not U.valid(model.smc) then model.smc = StaticFindObject(SMC) end
+    local pm = U.get(player, "PistolSM", nil)
+    if not (U.valid(pm) and U.valid(model.smc)) then return end
+    local ok, comp = pcall(function()
+        return player:AddComponentByClass(model.smc, false, { Translation = { X = 0, Y = 0, Z = 0 }, Rotation = { X = 0, Y = 0, Z = 0, W = 1 },
+            Scale3D = { X = 1, Y = 1, Z = 1 } }, false)
+    end)
+    if not (ok and U.valid(comp)) then return end
+    local len, dia = c.ModelLength or 15, c.ModelDiameter or 4
+    pcall(function() comp:SetStaticMesh(model.cyl) end)
+    pcall(function() comp:SetCollisionEnabled(0) end)
+    pcall(function() comp:SetCastShadow(false) end)
+    pcall(function() comp:K2_AttachToComponent(pm, FName("Muzzle"), 2, 2, 1, false) end)
+    pcall(function() comp:K2_SetRelativeLocationAndRotation({ X = len / 2, Y = 0, Z = 0 }, { Pitch = -90, Yaw = 0, Roll = 0 }, false, {}, false) end)
+    pcall(function() comp:SetWorldScale3D({ X = dia / 100, Y = dia / 100, Z = len / 100 }) end)
+    pcall(function() comp:SetMaterial(0, pm:GetMaterial(0)) end)
+    model.comp, model.a = comp, U.addr(player)
+end
+-- The pistol's shots come from its weapon SFX component (WeaponSFXCompoment_III): cues_OneShot
+-- = { near shot, distant echo }, cues_Tail = the tail. Its cues_OneShot_Suppressor is empty in this
+-- game, so while the suppressor is on the mod plays the same cues quieter and higher (near x
+-- SoundVolume, echo x SoundDistantVolume, tail x SoundTailVolume, pitch x SoundPitch) and restores
+-- them otherwise. The cues are shared by pistols of that type.
+local cueOrig = {} -- cue name -> { obj, vol, pitch }
+local function forCues(w, fn)
+    local fx
+    pcall(function() fx = w:GetWeaponFXComponent() end)
+    if not U.valid(fx) then return end
+    for _, arr in ipairs({ "cues_OneShot", "cues_Tail" }) do
+        local i = 0
+        pcall(function()
+            fx[arr]:ForEach(function(_, e)
+                i = i + 1
+                local cue = e:get()
+                if U.valid(cue) then fn(arr, i, cue) end
+            end)
+        end)
+    end
+end
+local function restoreCues()
+    for k, o in pairs(cueOrig) do
+        if U.valid(o.obj) then pcall(function() o.obj.VolumeMultiplier = o.vol; o.obj.PitchMultiplier = o.pitch end) end
+        cueOrig[k] = nil
+    end
+end
+local function setSound(w, on)
+    local c = cfg().Suppressor
+    if not on then
+        if sound.a then restoreCues(); sound.a = nil end
+        return
+    end
+    local a = U.addr(w)
+    if sound.a == a then return end
+    restoreCues()
+    sound.a = a
+    forCues(w, function(arr, i, cue)
+        local k = cue:GetFName():ToString()
+        if not cueOrig[k] then cueOrig[k] = { obj = cue, vol = U.get(cue, "VolumeMultiplier", 1.0), pitch = U.get(cue, "PitchMultiplier", 1.0) } end
+        local o = cueOrig[k]
+        local f = (arr == "cues_Tail") and (c.SoundTailVolume or 0.2) or (i == 1 and (c.SoundVolume or 0.3) or (c.SoundDistantVolume or 0))
+        pcall(function() cue.VolumeMultiplier = o.vol * f; cue.PitchMultiplier = o.pitch * (c.SoundPitch or 1.2) end)
+    end)
+end
+function N.updateLooks(player, now)
+    if now < looksAt then return end
+    looksAt = now + 0.5
+    local w = U.valid(player) and weaponOf(player) or nil
+    local on = w ~= nil and N.isSuppressed(w)
+    if not on or (model.comp and (model.a ~= U.addr(player) or not U.valid(model.comp))) then dropModel() end
+    if on and not model.comp and cfg().Suppressor.ShowModel then addModel(player) end
+    if model.comp then -- shown only while the pistol model is
+        local vis = U.get(U.get(player, "PistolSM", nil), "bVisible", true) == true
+        pcall(function() model.comp:SetVisibility(vis, false) end)
+    end
+    setSound(w, on)
 end
 
 -- State file: one key per line.
@@ -290,10 +413,19 @@ end
 -- Resolve the queue (tick). player: live pawn, for line-of-sight occlusion checks.
 -- LineOfSightTo from the NPC to the player is the occlusion test (verified in game).
 local FROM_PLAYER = { shot = true, steps = true, launcher = true }
-function N.process(A, player)
+-- Environment (DESIGN.md 17.5): stations are noisy (machinery, crowds), dungeons quiet.
+local function placeHearing(where)
+    local h = cfg().Environment.Hearing
+    if where == G.Where.StationTrans or where == G.Where.StationSubLevel then return h.Station or 1.0 end
+    if where == G.Where.Dungeon then return h.Dungeon or 1.0 end
+    return 1.0
+end
+function N.process(A, player, where)
     if #N.queue == 0 then return end
     local c = cfg().Noise
     local now = os.clock()
+    local env = placeHearing(where)
+    local masked = now < (N.maskUntil or 0)
     local budget = c.MaxOcclusionChecksPerTick
     for _, n in ipairs(N.queue) do
         -- the occlusion test looks from the NPC to the player, so it only fits noises you make
@@ -301,7 +433,8 @@ function N.process(A, player)
         for _, e in pairs(A.npcs) do
             if e.managed and e.pos then
                 local d = U.dist(e.pos, n.pos)
-                local r = n.r * A.hearing(e, now) -- suspicion sharpens hearing too
+                local r = n.r * A.hearing(e, now) * env -- suspicion sharpens hearing; machinery dulls it
+                if masked and n.react == "suspect" then r = r * (cfg().Environment.MaskFactor or 0.6) end
                 if fromPlayer and d < r and d > r * c.OccludedFactor and budget > 0 then
                     -- outer band: heard only with a clear line to the source
                     local npc = A.objOf(e)

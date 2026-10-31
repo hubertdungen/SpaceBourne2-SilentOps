@@ -126,6 +126,22 @@ function AL.tick(now)
     end
 end
 
+-- Quiet squad soldiers as targets enemies can notice (DESIGN.md 17.6): only while a quiet order
+-- is active (the soldiers found on the order key press), at most 6.
+function AL.quietSquad()
+    if not AL.order or AL.order == "free" then return {} end
+    local out = {}
+    for _, sol in ipairs(liveSoldiers()) do
+        if #out >= 6 then break end
+        local pos = U.location(sol)
+        if pos then
+            out[#out + 1] = { obj = sol, pos = pos, stance = U.get(sol, P.Stance, G.Stance.Crouching),
+                speed = U.speed(sol), gait = U.get(sol, P.Gait, G.Gait.Walking), light = false }
+        end
+    end
+    return out
+end
+
 -- Stealth broken: allies fight back.
 function AL.onCompromised(player)
     if cfg().AutoWeaponsFree and AL.order and AL.order ~= "free" then

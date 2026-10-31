@@ -86,7 +86,7 @@ function T.onDeath(A, N, npc, player)
     local budget = d.MaxLineOfSightPerTick
     for _, e in pairs(A.npcs) do
         if budget <= 0 then break end
-        local extra = d.Senses.ExtraAngle[A.level(e, now)] or 0
+        local extra = d.Senses.ExtraAngle[A.senses(e, now)] or 0
         if e.managed and e.pos and e.fwd and U.dist(e.pos, pos) < w.Range
             and U.angleTo(e.fwd, e.pos, pos) <= d.PeripheralHalfAngle + extra then
             local wo = A.objOf(e)

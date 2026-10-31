@@ -868,3 +868,127 @@ errors, stealth off / on, ally order, "in plain view" at 6 m.
 Not tested: real gamepad and keyboard presses (PC locked; the 0.1 keys are unchanged), witness
 cover crouch (50% chance, not rolled), the `pack` channel event (TE not installed), companions,
 the squad's quiet follow walk over distance.
+
+---------------------------------------------------------------------------------------------
+
+## 17. Version 0.3: awareness model (user request, 2026-10-31)
+
+Goal: crouching is not invisibility, suspicion is a spectrum that rises and decays with evidence,
+and the place, the NPC's training and what it already knows all shape what it notices.
+
+### 17.1 Concepts
+
+* **Situation awareness (SA)**: what reaches the NPC. Sight = range x field of view x what is
+  exposed of you (17.3); hearing = radius x environment (17.4).
+* **Perception**: how fast evidence turns into suspicion and how sure it gets. Training (militia <
+  regular < elite, as HTR's doctrines), distance (far = "something", near = "an enemy").
+* **Alert level** (Cooper colours), per NPC, the result of both:
+
+| Level | Meaning | Mod state | Senses (range / extra FOV / hearing / speed) |
+|---|---|---|---|
+| Blue | relaxed | calm, baseline of militia, pirates, regulars | 0.85 / -5 / 0.85 / 0.8 |
+| Green | normal attention | calm, baseline of elites; floor for 120 s after any evidence, and for everyone near a fight in the last 5 min | 1.0 / 0 / 1.0 / 1.0 |
+| Yellow | suspicious, uneasy | meter >= 0.35: looks, then walks over | 1.3 / 15 / 1.3 / 1.4 |
+| Orange | danger known, not who or where | hunting (gunfire, a mate shot dead, lost contact): weapon drawn, searches | 1.7 / 30 / 1.6 / 1.8 |
+| Red | combat | handed to vanilla + HTR | (vanilla / HTR alert sight) |
+
+Levels only move with evidence: Red -> Orange when it loses you, Orange -> Yellow when the search
+ends, Yellow -> Green as the meter decays, Green -> Blue after 5 min of nothing (baseline-Blue NPCs).
+Never "saw something, full alert" except in plain view a few metres away.
+
+### 17.2 Ownership with HTR and Tactical Engineering
+
+* Silent Ops owns the levels and perception of unaware NPCs. HTR owns sight ranges (its relaxed /
+  alert eye distance, read as the base range) and doctrines (combat behaviour after Red).
+* Red = `InCombat?` = HTR's alert sight, as before. Silent Ops publishes the highest level among
+  enemies near you as `ModRef` `SB2R_AlertLevel` (0 Blue .. 4 Red) for other mods (HTR, TE, HUDs).
+* Tactical Engineering turret sensors: a simpler version on their side (range x exposure x noise).
+
+### 17.3 Exposure (the light proxy)
+
+The game gives no light level, so what decides "clearly seen" is how much of you is exposed:
+
+* **Body points**: from your controller, `LineOfSightTo(npc, point)` from your head, chest and knees
+  (the same 0.015 ms check, viewed from your side: you can see its eyes = it can see that part).
+  Exposure = visible points / 3. 0 = hidden.
+* **Backdrop**: the same check from a point 1.5 m behind you (away from the NPC). Blocked = a wall
+  or cover right behind you breaks your silhouette (x0.8); open = skyline (x1.0).
+* **Flashlight**: x2 fill, x1.5 range (as before).
+* Recomputed every 0.6 s per NPC in range, at most 8 NPCs per tick (4 checks each).
+
+Exposure scales the effective range and the fill rate. So crouched behind a low wall (head only,
+1/3) is hard to see; crouched in the open (3/3) is seen.
+
+### 17.4 Crouching and identification
+
+* Crouched in the open: range x0.85 (was x0.6), fill x0.55. Exposure does the rest.
+* **Noticing vs identifying**: beyond `IdentifyFraction` of the effective range (standing 0.75,
+  crouched 0.5) the NPC sees "something" and the meter caps at 0.85 (yellow, walks over). Closer,
+  or still moving while it closes in, it fills on to Red.
+* Expected: an NPC facing you, you crouched and moving in the open at ~15 m: yellow in ~1-2 s, walks
+  over, combat when it gets close or you keep moving in its view. Crouched still and partly covered:
+  unseen beyond a few metres.
+
+### 17.5 Environment
+
+* Place (`WhereIsPlayer`): stations (machinery, crowds) hearing x0.8; dungeons (quiet, empty) x1.1;
+  planet surface x1.0.
+* Recent loud noise masks quiet ones: for 5 s after a gunshot or blast, footsteps, impacts and
+  suppressed shots are heard at x0.6.
+* A fight raises the floor of everyone within 60 m to Green for 5 min.
+
+### 17.6 Allies
+
+* Enemies also notice your squad soldiers (one soldier per NPC per tick, round robin): crouched
+  quiet soldiers in the open can give you away. Seen -> the NPC hands over to combat against the
+  soldier (vanilla `CheckForFirstFocus(soldier)`), and the squad goes weapons free.
+* Your squad's own awareness stays the order system (quiet orders hold fire until Red).
+
+### 17.7 Cost budget
+
+Per tick (5 Hz): at most 8 NPCs x 4 exposure checks every third tick, plus the existing sight check
+and one squad check per NPC. Expected < 0.5 ms per tick. Measured in 17.8.
+
+### 17.8 Weapon posture
+
+The level also decides the weapon (user, 2026-10-31): Blue / Green lowered; from Yellow into
+Orange the NPC raises it and aims at the suspected spot or sound (ALS aiming pose,
+`SetRotationMode(2)`, plus the focal point it already looks at), without firing; Red fires.
+Raising takes `RaiseSeconds` by training (elite 0.3 s, regular 0.8, pirate 1.0, militia 1.4; half
+in Orange). No fire before Red: the eyes stay off while the mod manages the NPC, and HTR resumes
+fire only from the eye hook (checked in its code and in the 0.2 tests).
+
+### 17.9 Suppressor: fitting, sound, model (user requests, 2026-10-31)
+
+* **Fitting** takes `FitSeconds` (3.5 s): the weapon's own `Reloading` flag (the fire loop checks
+  it first) blocks shots meanwhile; HUD "Fitting suppressor... / Suppressor fitted". Verified.
+* **Sound**: the pistol plays through its weapon SFX component (`WeaponSFXCompoment_III`, child
+  `3_07_PISTOL_SFXComponent_C`). It has `cues_OneShot_Suppressor` slots, but they are empty in
+  this game. While the suppressor is on, the mod plays the pistol's own cues quieter and higher:
+  near shot x0.3, distant echo x0, tail x0.2, pitch x1.2. Verified in game: the values change, and
+  the user hears a slight difference that does not sound like a suppressor. A real suppressed
+  sound needs a new sound asset, so a pak.
+* **Model**: the engine cylinder is cooked into SB2 and attaches. But the weapon actor's
+  `EBBarrel` / `SkeletalMesh` are not the pistol you see (a tube attached there lay on the floor),
+  and the character's `PistolSM` stays hidden while the pistol is in hand. Which component draws
+  the hand pistol is still unknown, so `ShowModel` is off. Next step: find the visible weapon mesh
+  (or a pak with a real model).
+
+### 17.10 Results of the 0.3 in-game test (2026-10-31, HTR 0.4.8)
+
+| Test | Result |
+|---|---|
+| Load | OK, all hooks, no errors. The 2 crashes in this run came from console research scripts (a full property dump; a scan of all mesh components), not from the mod |
+| Exposure in the open | 1.00 (3/3 body points) for every NPC with a clear view |
+| Crouched still, 15 m, Blue regular | Blue -> Green -> Yellow in ~2-3 s, weapon raised (drawn), walks over; combat only once close enough to identify (~13 m) |
+| Crouched, 15 m, near an earlier fight (Green floor) | Yellow in ~1 s, combat when it closed in |
+| Weapon posture | drawn in Yellow ~0.8 s after suspicious (regular), no shots before Red |
+| Alert level shared | `SB2R_AlertLevel` 0 / 4 read from another mod |
+| Suppressor fitting | 3.5 s, `Reloading` true meanwhile, then fitted |
+| Suppressed sound | cue values changed; user: slight difference, not a suppressor sound |
+| Visible suppressor | not visible on the hand pistol (see 17.9): off |
+| Frames, 8 enemies, 34 s | 98 fps, median 9 ms, p99 21 ms, max 75 ms (0.1 at the same spot: 99 fps, p99 19-20 ms). No measurable cost |
+
+Not tested: partial exposure / backdrop (the test spot has no low cover), the squad being seen
+(no quiet order active), environment hearing in stations / dungeons, crouched walking (the test
+push made the player stand).

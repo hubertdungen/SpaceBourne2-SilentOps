@@ -16,7 +16,7 @@
     stealth/hud.lua         on-screen messages
 ]]
 
-local VERSION = "0.2.0"
+local VERSION = "0.3.0"
 
 local U = require("stealth.util")
 
@@ -27,17 +27,25 @@ local defaults = {
     Enabled = true, RememberToggle = false, ToggleKey = "Shift+F4",
     Detection = {
         SightSource = "eye", SightRange = 3500, BubbleRadius = 6000, CentralHalfAngle = 35, PeripheralHalfAngle = 75, PeripheralFactor = 0.35,
-        Stance = { Standing = 1.0, Crouching = 0.6 }, Movement = { Still = 0.5, Walk = 1.0, Run = 1.5, Sprint = 2.2 },
+        Stance = { Standing = 1.0, Crouching = 0.85 }, StanceFill = { Standing = 1.0, Crouching = 0.55 },
+        Movement = { Still = 0.5, Walk = 1.0, Run = 1.5, Sprint = 2.2 },
+        ExposureRangeMin = 0.35, BackdropFactor = 0.8, BackdropDistance = 150,
+        ExposurePoints = { Standing = { 70, 20, -50 }, Crouching = { 30, 0, -35 } },
+        IdentifyFraction = { Standing = 0.75, Crouching = 0.5 }, IdentifyCap = 0.85,
         MovementRange = { Still = 1.0, Walk = 1.0, Run = 1.1, Sprint = 1.2 },
         StillSpeed = 50, FlashlightFactor = 2.0, FlashlightRangeFactor = 1.5, AmbientLight = 1.0,
         FillNearPerSec = 2.0, FillFarPerSec = 0.25, StandingNoticePerSec = 0.2, FarNoticeFactor = 1.6, DecayPerSec = 0.12,
         SuspiciousAt = 0.35, InvestigateAt = 0.6, HuntAt = 0.5,
         InstantRange = 800, InstantRangeSide = 300, InstantRangeCrouched = 300, ProximityRange = 150, ProximitySeconds = 1.0,
-        Senses = { Range = { 1.0, 1.4, 1.8 }, ExtraAngle = { 0, 15, 30 }, Hearing = { 1.0, 1.3, 1.6 }, Speed = { 1.0, 1.4, 1.8 } },
-        AlertedMemorySeconds = 120, SearchRadius = 600, InvestigateStepSeconds = 6,
+        Senses = { Range = { 0.85, 1.0, 1.3, 1.7 }, ExtraAngle = { -5, 0, 15, 30 }, Hearing = { 0.85, 1.0, 1.3, 1.6 },
+                   Speed = { 0.8, 1.0, 1.4, 1.8 } },
+        Baseline = { Pirate = "Blue", Militia = "Blue", Regular = "Blue", Elite = "Green" },
+        AreaRadius = 6000, AreaSeconds = 300,
+        AlertedMemorySeconds = 300, SearchRadius = 600, InvestigateStepSeconds = 6,
         SearchSeconds = 40, LoseSeconds = 25, Shout = true, ShoutRadius = 1500, SniperRangeFactor = 1.0,
         Perception = { Pirate = 0.85, Militia = 0.75, Regular = 1.0, Elite = 1.35 },
         ReactionSeconds = { Pirate = 0.5, Militia = 0.7, Regular = 0.4, Elite = 0.15 },
+        RaiseSeconds = { Pirate = 1.0, Militia = 1.4, Regular = 0.8, Elite = 0.3 },
         AffectBosses = false, AffectTanks = false, MaxLineOfSightPerTick = 8,
     },
     Noise = {
@@ -52,6 +60,7 @@ local defaults = {
     },
     Suppressor = {
         ToggleKey = "F4", Eligible = { pistol = true }, AlwaysSilenced = {}, VelocityFactor = 0.92, SpreadDegrees = 0.4,
+        FitSeconds = 3.5, ShowModel = false, ModelLength = 15, ModelDiameter = 4, SoundVolume = 0.3, SoundDistantVolume = 0, SoundTailVolume = 0.2, SoundPitch = 1.2,
     },
     Takedown = {
         Enabled = true, Weapons = { knife = true, sword = true, hammer = false }, MaxDistance = 220, BehindAngle = 110,
@@ -59,7 +68,8 @@ local defaults = {
     },
     Witness = { Range = 1500, SawKillMeter = 0.95, CoverChance = 0.5, CallRadius = 2500, CalledMeter = 0.6, BodyMeter = 0.75 },
     Bodies = { Enabled = true, SeeRange = 1500, CloseRange = 300, KeepSeconds = 180 },
-    Allies = { OrderKey = "F3", AutoWeaponsFree = true, FollowDistance = 400, CatchUpDistance = 3000 },
+    Allies = { OrderKey = "F3", AutoWeaponsFree = true, FollowDistance = 400, CatchUpDistance = 3000, SquadVisible = true },
+    Environment = { Hearing = { Station = 0.8, Dungeon = 1.1 }, MaskSeconds = 5, MaskFactor = 0.6 },
     Gamepad = { Enabled = true, TapWindow = 0.45 },
     Hud = { Messages = true, Quiet = true, States = true, ShowHidden = false, MinSecondsBetween = 4.0 },
     Debug = { Log = false, SlowHookMs = 8, TickMs = 200, Commands = false },
@@ -235,6 +245,7 @@ local function debugCommands(now)
     end
 end
 local wasCompromised = false
+local lastLevel = nil
 
 -- Gamepad: quick presses of the flashlight button (Q1_Character's gamepad-only light action;
 -- the keyboard light key is a different action, so it never counts).
@@ -268,6 +279,7 @@ local function snapshot(p)
         gait = U.get(p, G.P.Gait, 0),
         speed = U.speed(p),
         light = U.get(p, G.P.LightOn, false) == true,
+        where = U.get(p, G.P.WhereIsPlayer, nil),
     }
 end
 
@@ -286,6 +298,13 @@ local function tick()
     end
     debugCommands(now)
     padResolve(now)
+    N.updateLooks(U.alive(STEALTH.player, STEALTH.playerAddr) and STEALTH.player or nil, now) -- suppressor model / sound
+    local fitted = N.tickFitting(now) -- suppressor being screwed on / off
+    if fitted then
+        saveState()
+        U.log("suppressor: " .. fitted)
+        HUD.say(fitted, U.valid(STEALTH.player) and STEALTH.player or nil, true)
+    end
     if not STEALTH.on then return end
     local player = U.alive(STEALTH.player, STEALTH.playerAddr) and STEALTH.player or nil
     -- after a load the old pawn's address can be reused by another object: still the player?
@@ -295,8 +314,15 @@ local function tick()
     N.trackGrenades(now)
     N.readShared(now)
     N.footsteps(me, now)
-    N.process(A, player)
-    local sum = A.tick(player, me, dt)
+    N.process(A, player, me.where)
+    local pc = U.get(player, "Controller", nil)
+    local squad = cfg.Allies.SquadVisible and AL.quietSquad() or {}
+    local sum = A.tick(player, me, dt, squad, U.valid(pc) and pc or nil)
+    -- highest alert level near you, for other mods (DESIGN.md 17.2): 1 Blue .. 5 Red -> 0 .. 4
+    if sum.level ~= lastLevel then
+        lastLevel = sum.level
+        pcall(function() ModRef:SetSharedVariable("SB2R_AlertLevel", sum.level - 1) end)
+    end
     T.tick(A, now)
     AL.tick(now)
     if sum.compromised and not wasCompromised then
@@ -309,8 +335,9 @@ local function tick()
     if U.Verbose and now > statusAt then
         statusAt = now + 2
         local lines = A.debugLines(me)
-        U.log(string.format("status: player stance=%s gait=%s speed=%.0f light=%s compromised=%s tick=%.2fms npcs=%d",
-            tostring(me.stance), tostring(me.gait), me.speed, tostring(me.light), tostring(sum.compromised), cost * 1000, #lines))
+        U.log(string.format("status: player stance=%s gait=%s speed=%.0f light=%s where=%s compromised=%s level=%d squad=%d tick=%.2fms npcs=%d",
+            tostring(me.stance), tostring(me.gait), me.speed, tostring(me.light), tostring(me.where), tostring(sum.compromised),
+            sum.level - 1, #squad, cost * 1000, #lines))
         for _, l in ipairs(lines) do U.log(l) end
     end
     if cost > H.SLOW and now - slowAt > 30 then
@@ -363,11 +390,11 @@ end
 -- Keys follow the realism set's shared key plan (revision 2), same rules and parser as HTR 0.4.4:
 --   * a key is a UE4SS key name with optional modifiers: "F4", "Shift+F4" (only Shift is
 --     recommended: on foot Ctrl opens the map and Alt crouches);
---   * never F1 F2 F5 F6 F8 F10 F12, plain or with Shift: the game reacts to them anyway;
+--   * never F1 F2 F5 F6 F8 F10 F11 F12, plain or with Shift: the game reacts to them anyway;
 --   * a plain bind stays quiet while any modifier is held, so Shift+F4 (stealth on/off) does not
 --     also fit a suppressor (Shift+F3 is a spare Stealth key).
 -- Verified in game (2026-10-30): Shift+F4, F4, F3, and the Shift guard on the plain keys.
-local GAME_KEYS = { F1 = 1, F2 = 1, F5 = 1, F6 = 1, F8 = 1, F10 = 1, F12 = 1 }
+local GAME_KEYS = { F1 = 1, F2 = 1, F5 = 1, F6 = 1, F8 = 1, F10 = 1, F11 = 1, F12 = 1 } -- F11: fullscreen (key plan rev 2c)
 local KEY_ALIAS = { INSERT = "INS", DELETE = "DEL", PAGEDOWN = "PAGE_DOWN", PAGEUP = "PAGE_UP", ESC = "ESCAPE" }
 local MODS = { CTRL = "CONTROL", CONTROL = "CONTROL", SHIFT = "SHIFT", ALT = "ALT" }
 local function parseKey(spec)
