@@ -992,3 +992,17 @@ fire only from the eye hook (checked in its code and in the 0.2 tests).
 Not tested: partial exposure / backdrop (the test spot has no low cover), the squad being seen
 (no quiet order active), environment hearing in stations / dungeons, crouched walking (the test
 push made the player stand).
+
+### 17.11 0.3.1 (2026-11-01)
+
+* Bug (user, full set: HTR 0.4.9, Ammo Discipline, Ground Waypoints, Get Out of the Way, Faction
+  Power, Tactical Engineering 0.2.1, Gear Without Levels, Split Controls): standing enemies 10-30 m
+  away never saw you. Cause, seen in the test: the exposure traces from the player's side returned
+  0.00 at 15 m while the NPC's own `LineOfSightTo` (centre) was true; 0.3.0 then counted you as
+  hidden. Fix: the NPC-side check (`bAlternateChecks` = also head / sides) runs too, and a visible
+  centre means exposure >= 0.67. A one-time warning in UE4SS.log reports blocked traces.
+* Visible suppressor: cylinders attached to every candidate (weapon mesh "Muzzle" socket, weapon
+  root, HeldObjectRoot, CurrentWeapon; all within 1 cm of the hand bone) do not render on the hand
+  pistol; one attached to `EBBarrel` (not in the hand) did. Not feasible without more research or
+  a pak; `ShowModel` stays off.
+* Frames, full set, 8 enemies: 91 fps, median 9 ms, p99 21 ms, max 31 ms.

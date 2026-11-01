@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.1 — 2026-11-01
+
+- **Fix: enemies did not see you standing in front of them** (reported in play with the full
+  realism set). In 0.3.0 the cover check ran from your side only, and in some setups those
+  checks were blocked right around you, so you counted as hidden. Now the enemy's own line of
+  sight to you counts too: if it can see you, you are at least two-thirds exposed. Tested in game
+  with HTR 0.4.9 and the rest of the set: seen at 15 m (yellow, then combat in ~2 s), no frame cost.
+- The visible suppressor is still off. The game does not draw extra parts on the pistol in your
+  hand, so it would need a pak.
+
 ## 0.3.0 — 2026-10-31
 
 A deeper awareness model (DESIGN.md, section 17).

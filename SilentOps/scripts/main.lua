@@ -16,7 +16,7 @@
     stealth/hud.lua         on-screen messages
 ]]
 
-local VERSION = "0.3.0"
+local VERSION = "0.3.1"
 
 local U = require("stealth.util")
 

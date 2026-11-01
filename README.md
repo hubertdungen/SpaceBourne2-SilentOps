@@ -8,7 +8,7 @@ where they are looking, your stance, how fast you move, your flashlight and how 
 are. Gunshots carry and put enemies on edge, a suppressed pistol thumps instead of cracking, a knife
 from behind kills silently, and your squad can follow you quietly without opening fire.
 
-Version 0.3.0 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6) · UE4SS Lua mod · works alone or with
+Version 0.3.1 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6) · UE4SS Lua mod · works alone or with
 [Hardcore Tactical Realism](https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism).
 
 ## What it does
@@ -58,7 +58,7 @@ Version 0.3.0 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6
 
 ## Install
 
-1. Download `SilentOps-0.3.0.zip` from the
+1. Download `SilentOps-0.3.1.zip` from the
    [releases](https://github.com/hubertdungen/SpaceBourne2-SilentOps/releases).
 2. Extract it into the game folder
    (`...\steamapps\common\SpaceBourne 2\`). It adds
@@ -103,8 +103,7 @@ Edit `Mods\SilentOps\scripts\config.lua` (every line is optional). The main ones
 - `Allies` — order key, auto weapons free when spotted.
 - `Gamepad`, `Hud` — the flashlight-button combos; which on-screen messages are shown.
 
-<!-- nexus:skip -->
-## Tested
+## Status and known limits
 
 0.3 was tested in game on 2026-10-31 with HTR 0.4.8: the alert levels, crouching noticed in the
 open, weapon posture, the suppressor fitting time, and frame times (98 fps with 8 enemies around,
@@ -128,11 +127,10 @@ Not tested yet:
 - a real gamepad (the button's input event was triggered directly);
 - the squad's quiet follow walk over long distances;
 - companions.
-<!-- /nexus:skip -->
-
-## Known limits
 
 Bosses and robot tanks keep their vanilla behaviour.
+
+Known limits:
 
 - There is no real light or shadow model (the game gives no light level to mods); only your
   flashlight counts.
@@ -145,26 +143,24 @@ Bosses and robot tanks keep their vanilla behaviour.
 - No light level: the game gives mods none, and measuring the picture's brightness would cost
   frames.
 
-<!-- nexus:skip -->
 Design notes, research and the full test log: [DESIGN.md](DESIGN.md).
-<!-- /nexus:skip -->
 
 ## Part of the SpaceBourne 2 realism set
 
-This mod is part of the realism set, built around [Hardcore Tactical Realism](https://www.nexusmods.com/spacebourne2/mods/4) as the core mod. HTR is not required: this mod works on its own or with any of the others. **Install them all at once** with the [SpaceBourne 2 Realism installer](https://www.nexusmods.com/spacebourne2/mods/11) ([GitHub](https://github.com/hubertdungen/SpaceBourne2-Realism)): tick the mods you want, and it switches them on and keeps them up to date.
+Separate mods that work alone or together:
 
-- **Hardcore Tactical Realism (HTR)**: the core: realistic ballistics, wounds and tactical AI. [GitHub](https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism) · [Nexus](https://www.nexusmods.com/spacebourne2/mods/4) · [Steam](https://steamcommunity.com/app/1646850/discussions/0/573805072991123580/)
-- **Split Controls**: separate look inversion for ships and on foot. [GitHub](https://github.com/hubertdungen/SpaceBourne2-SplitControls) · [Nexus](https://www.nexusmods.com/spacebourne2/mods/5)
-- **Silent Ops** *(this mod)*: realistic stealth, suppressors and silent takedowns. [GitHub](https://github.com/hubertdungen/SpaceBourne2-SilentOps) · [Nexus](https://www.nexusmods.com/spacebourne2/mods/6)
-- **Gear Without Levels**: any weapon or suit at any level, with small penalties. [GitHub](https://github.com/hubertdungen/SpaceBourne2-GearWithoutLevels) · [Nexus](https://www.nexusmods.com/spacebourne2/mods/7)
-- **SB2 HOTAS**: joystick, HOTAS, pedals, head tracking and triple screen. [GitHub](https://github.com/hubertdungen/SpaceBourne2-HOTAS) · [Nexus](https://www.nexusmods.com/spacebourne2/mods/8)
-- **Faction Power**: dungeons, sales and missions earn your faction power. [GitHub](https://github.com/hubertdungen/SpaceBourne2-FactionPower) · [Nexus](https://www.nexusmods.com/spacebourne2/mods/9)
-- **Tactical Engineering**: deployable turrets and barricades that take time to set up. [GitHub](https://github.com/hubertdungen/SpaceBourne2-TacticalEngineering) · [Nexus](https://www.nexusmods.com/spacebourne2/mods/10)
-- **Ammo Discipline**: realistic ammo limits and scavenging. [GitHub](https://github.com/hubertdungen/SpaceBourne2-AmmoDiscipline) · [Nexus](https://www.nexusmods.com/spacebourne2/mods/12)
-- **Ground Waypoints**: planet waypoints on foot and on the hoverbike. [GitHub](https://github.com/hubertdungen/SpaceBourne2-GroundWaypoints) · [Nexus](https://www.nexusmods.com/spacebourne2/mods/13)
-- **Get Out of the Way**: NPCs step aside naturally when you walk through them. [GitHub](https://github.com/hubertdungen/SpaceBourne2-GetOutOfTheWay) · [Nexus](https://www.nexusmods.com/spacebourne2/mods/14)
+| Mod | Status |
+|---|---|
+| **Hardcore Tactical Realism (HTR)** — realistic ballistics and tactical AI | released: [GitHub](https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism) · [Nexus Mods](https://www.nexusmods.com/spacebourne2/mods/4) · [Steam discussion](https://steamcommunity.com/app/1646850/discussions/0/573805072991123580) |
+| **SB2 HOTAS** — real joystick, HOTAS, rudder pedals and head tracking | released: [GitHub](https://github.com/hubertdungen/SpaceBourne2-HOTAS) · [Nexus Mods](https://www.nexusmods.com/spacebourne2/mods/8) |
+| **Split Controls** — separate invert for ship and on foot | released: [GitHub](https://github.com/hubertdungen/SpaceBourne2-SplitControls) · [Nexus Mods](https://www.nexusmods.com/spacebourne2/mods/5) |
+| **Silent Ops** — realistic stealth (this mod) | released: [GitHub](https://github.com/hubertdungen/SpaceBourne2-SilentOps) · [Nexus Mods](https://www.nexusmods.com/spacebourne2/mods/6) |
+| **Gear Without Levels** — use gear regardless of level | released: [GitHub](https://github.com/hubertdungen/SpaceBourne2-GearWithoutLevels) · [Nexus Mods](https://www.nexusmods.com/spacebourne2/mods/7) |
+| **Faction Power** — your faction gains power from dungeons, sales and missions | released: [GitHub](https://github.com/hubertdungen/SpaceBourne2-FactionPower) · [Nexus Mods](https://www.nexusmods.com/spacebourne2/mods/9) |
+| Tactical Engineering — turrets | coming |
+| Tactical First Person | coming |
 
-Coming soon: Tactical First Person.
+One installer for the whole set is planned.
 
 ## License
 

@@ -587,9 +587,24 @@ function A.tick(player, me, dt, squad, pc)
             -- you: in range and in its view at all? then how much of you it can see (exposure)
             local rate, instant, cap = A.sightRate(e, me, now, 1.0, 1.0)
             local seen, target, tpos, why = false, player, me.pos, "seen"
-            if rate > 0 and losBudget > 0 and pc then
+            if rate > 0 and losBudget > 0 then
                 losBudget = losBudget - 1
-                local exp, back = exposure(pc, npc, me, e)
+                -- the NPC's own line of sight to your centre (the 0.2 check, proven in game) ...
+                local okC, center = pcall(function() return npc.Controller:LineOfSightTo(player, { X = 0, Y = 0, Z = 0 }, true) end) -- true: also head / sides
+                center = okC and center == true
+                -- ... and how much of you it can see, checked from your side (cover)
+                local exp, back = 0, 1.0
+                if pc then exp, back = exposure(pc, npc, me, e) end
+                e.dbgExpRaw, e.dbgCenter = exp, center
+                -- it sees your centre: at least chest and head are in view, whatever the traces from
+                -- your side say (something around you can block those; 0.3.0 then hid you)
+                if center and exp < 0.67 then
+                    if exp == 0 and not A.expWarned then
+                        A.expWarned = true
+                        U.warn("exposure traces blocked near the player; using the enemy's own line of sight")
+                    end
+                    exp = 0.67
+                end
                 e.exposure = exp
                 rate, instant, cap = A.sightRate(e, me, now, exp, back)
                 seen = rate > 0
@@ -682,9 +697,9 @@ function A.debugLines(me)
             local d = U.dist(e.pos, me.pos)
             if d < cfg().Detection.BubbleRadius then
                 local COL = { "blue", "green", "yellow", "orange", "red" }
-                out[#out + 1] = string.format("  %s %s %s m=%.2f d=%.0fm range=%.0fm exp=%.2f managed=%s ang=%.0f rate=%.2f seen=%s %s hunt=%s drawn=%s%s",
+                out[#out + 1] = string.format("  %s %s %s m=%.2f d=%.0fm range=%.0fm exp=%.2f(raw %.2f centre %s) managed=%s ang=%.0f rate=%.2f seen=%s %s hunt=%s drawn=%s%s",
                     tostring(a), COL[level(e, os.clock())] or "?", e.state, e.meter, d / 100, (e.baseRange or 0) / 100,
-                    e.exposure or -1, tostring(e.managed), e.dbgAng or -1, e.dbgRate or -1, tostring(e.dbgSeen),
+                    e.exposure or -1, e.dbgExpRaw or -1, tostring(e.dbgCenter), tostring(e.managed), e.dbgAng or -1, e.dbgRate or -1, tostring(e.dbgSeen),
                     tostring(e.training), tostring(e.hunting), tostring(e.drawn), e.dbgErr and (" err=" .. e.dbgErr) or "")
             end
         end
