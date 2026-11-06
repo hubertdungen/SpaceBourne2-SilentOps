@@ -57,6 +57,8 @@ knife from behind kills silently, and your squad can follow you quietly without 
   suppressor is fitted.
 - **A small cost.** The pistol gets a little less accurate and its bullet a little slower.
 
+![The suppressor tube on the pistol in hand](docs/suppressor-on-pistol.jpg)
+
 ### Bodies, witnesses and searches
 
 - **Witnesses.** An enemy who sees a mate shot dead draws its weapon, calls the others and maybe
