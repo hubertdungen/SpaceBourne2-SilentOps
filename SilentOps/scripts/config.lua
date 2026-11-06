@@ -187,10 +187,10 @@ return {
     -- (an even number of presses leaves the light as it was)
     Gamepad = { Enabled = true, TapWindow = 0.45 },
 
-    -- On-screen messages. The game's warning box plays an alarm ("tu-tu-tu") with each one:
-    -- Quiet silences it for the mod's own messages (the game's warnings keep it). Only state
-    -- changes that matter are shown (no "Hidden" line unless ShowHidden).
-    Hud = { Messages = true, Quiet = true, States = true, ShowHidden = false, MinSecondsBetween = 4.0 },
+    -- On-screen messages. The game's HUD beeps ("tu-tu-tu") with each one: Quiet silences it for
+    -- the mod's own messages (the game's own keep it). A line stays about 5 s; the same line at
+    -- most once per 30 s. Only state changes that matter (no "Hidden" line unless ShowHidden).
+    Hud = { Messages = true, Quiet = true, States = true, ShowHidden = false, MinSecondsBetween = 5.0 },
 
     Debug = {
         Log        = false,  -- write SilentOps\stealth.log

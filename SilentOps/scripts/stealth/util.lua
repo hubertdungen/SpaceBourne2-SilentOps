@@ -167,47 +167,14 @@ function U.modifierDown(player)
     return false
 end
 
--- The warning widget plays the game's "can't do that" alarm (GUI_Cant, "tu-tu-tu") with every
--- message. With Hud.Quiet the mod silences that one sound for 2 s around its own messages, the
--- way HTR 0.4.6 does (a SoundWave's Volume is applied while it plays); the game's own warnings
--- keep their sound. HTR may mute the same sound: the real volume is shared through
--- ModRef "SB2R_CantVolume" and a volume of 0 is never taken as the real one, so the alarm can
--- never be left silent.
-local CANT = "/Game/11Misc/LGUI/Audio/GUI_Cant.GUI_Cant"
-local cantObj, unmuteAt = nil, 0
-local function realVolume(snd)
-    local ok, shared = pcall(function() return ModRef:GetSharedVariable("SB2R_CantVolume") end)
-    if ok and type(shared) == "number" and shared > 0 then return shared end
-    local okV, v = pcall(function() return snd.Volume end)
-    if okV and type(v) == "number" and v > 0 then
-        pcall(function() ModRef:SetSharedVariable("SB2R_CantVolume", v) end)
-        return v
-    end
-    return nil -- muted by someone else right now: leave it to them
-end
-local function muteAlarm()
-    if not U.Quiet then return end
-    if not U.valid(cantObj) then cantObj = StaticFindObject(CANT) end -- loaded with the HUD
-    local snd = cantObj
-    if not U.valid(snd) then return end
-    local vol = realVolume(snd)
-    if not vol then return end
-    pcall(function() snd.Volume = 0.0 end)
-    unmuteAt = os.clock() + 2.0
-    ExecuteWithDelay(2100, function()
-        ExecuteInGameThread(function()
-            if os.clock() < unmuteAt then return end -- a newer message keeps it quiet a bit longer
-            if U.valid(cantObj) then pcall(function() cantObj.Volume = vol end) end
-        end)
-    end)
-end
-
--- On-screen message on foot (verified by HTR 0.4.1).
-function U.notify(text, ctx)
+-- On-screen message on foot (verified by HTR 0.4.1), through the set's shared stealth/hudmsg.lua:
+-- no HUD beep (the "tu-tu-tu" players heard), held about 5 s so it can be read, the same text at
+-- most once per 30 s. force: shown even if repeated (key presses, COMPROMISED).
+local HM = require("stealth.hudmsg")
+function U.notify(text, ctx, force)
     local p = U.playerPawn(ctx) or ctx
     if not U.valid(p) then return false end
-    pcall(muteAlarm)
-    return pcall(function() p:TMWPerkWarning(FText(text)) end)
+    return HM.show(p, text, nil, force)
 end
 
 return U

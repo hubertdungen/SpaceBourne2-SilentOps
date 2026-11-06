@@ -17,7 +17,7 @@ function HUD.say(text, ctx, urgent)
     if not cfg().Messages or not text then return end
     local now = os.clock()
     if urgent or now - HUD.lastAt >= cfg().MinSecondsBetween then
-        if U.notify(text, ctx) then HUD.last, HUD.lastAt, HUD.pending = text, now, nil end
+        if U.notify(text, ctx, urgent) then HUD.last, HUD.lastAt, HUD.pending = text, now, nil else HUD.pending = nil end
     else
         HUD.pending = text
     end

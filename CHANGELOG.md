@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.2 — 2026-11-06
+
+- **No more "tu-tu-tu".** 0.3.0 muted the wrong sound: the beep comes from the game's HUD on every
+  line. Silent Ops' lines ("Enemies searching", "Someone is suspicious") are now silent, stay about
+  5 seconds so you can read them, and the same line shows at most once in 30 seconds. The game's
+  own warnings keep their beep.
+- Tested in game through Ammo Discipline 0.1.2, which uses the same line code: no beep, the line
+  still on screen after 3 s, a repeat skipped.
+
 ## 0.3.1 — 2026-11-01
 
 - **Fix: enemies did not see you standing in front of them** (reported in play with the full

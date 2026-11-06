@@ -2,7 +2,7 @@
 
 Enemies no longer spot you the instant you enter their view, from any distance. Up close and in plain view you are seen at once; farther away they notice you gradually, depending on distance, where they are looking, your stance, how fast you move, your flashlight and how well trained they are. Gunshots carry and put enemies on edge, a suppressed pistol thumps instead of cracking, a knife from behind kills silently, and your squad can follow you quietly without opening fire.
 
-Version 0.3.1 · [url=https://www.nexusmods.com/spacebourne2/mods/6]Nexus Mods page[/url] · UE4SS Lua mod · works alone or with [url=https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism]Hardcore Tactical Realism[/url].
+Version 0.3.2 · [url=https://www.nexusmods.com/spacebourne2/mods/6]Nexus Mods page[/url] · UE4SS Lua mod · works alone or with [url=https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism]Hardcore Tactical Realism[/url].
 
 [line]
 [size=5][b]What it does[/b][/size]
@@ -35,7 +35,7 @@ Version 0.3.1 · [url=https://www.nexusmods.com/spacebourne2/mods/6]Nexus Mods p
 [size=5][b]Install[/b][/size]
 
 [list=1]
-[*]Download SilentOps-0.3.1.zip from the [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps/releases]releases[/url].
+[*]Download SilentOps-0.3.2.zip from the [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps/releases]releases[/url].
 [*]Extract it into the game folder (...\steamapps\common\SpaceBourne 2\). It adds SB2\Binaries\Win64\Mods\SilentOps\ (the enabled.txt inside turns it on). Updating: extract over it and let it replace the files.
 [*]Play. Stealth is on; [b]Shift+F4[/b] on foot switches it off for the session.
 [/list]
@@ -90,6 +90,8 @@ Edit Mods\SilentOps\scripts\config.lua (every line is optional). The main ones:
 [*]frame times: no measurable cost (53 vs 54 fps with 8 enemies around).
 [/list]
 
+0.3.2's silent HUD lines were tested on 2026-11-06 through Ammo Discipline 0.1.2, which uses the same line code: no beep, the line still on screen after 3 s, a repeat skipped.
+
 0.1 tested the keys, takedowns, losing enemies and the squad orders (2026-10-30).
 
 Not tested yet:
@@ -114,7 +116,7 @@ Known limits:
 [*]No light level: the game gives mods none, and measuring the picture's brightness would cost frames.
 [/list]
 
-Design notes, research and the full test log: DESIGN.md.
+Design notes, research and the full test log: [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps/blob/mainDESIGN.md]DESIGN.md[/url].
 
 [line]
 [size=5][b]Part of the SpaceBourne 2 realism set[/b][/size]
@@ -137,4 +139,4 @@ One installer for the whole set is planned.
 [line]
 [size=5][b]License[/b][/size]
 
-MIT. See LICENSE.
+MIT. See [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps/blob/mainLICENSE]LICENSE[/url].

@@ -16,7 +16,7 @@
     stealth/hud.lua         on-screen messages
 ]]
 
-local VERSION = "0.3.1"
+local VERSION = "0.3.2"
 
 local U = require("stealth.util")
 
@@ -71,7 +71,7 @@ local defaults = {
     Allies = { OrderKey = "F3", AutoWeaponsFree = true, FollowDistance = 400, CatchUpDistance = 3000, SquadVisible = true },
     Environment = { Hearing = { Station = 0.8, Dungeon = 1.1 }, MaskSeconds = 5, MaskFactor = 0.6 },
     Gamepad = { Enabled = true, TapWindow = 0.45 },
-    Hud = { Messages = true, Quiet = true, States = true, ShowHidden = false, MinSecondsBetween = 4.0 },
+    Hud = { Messages = true, Quiet = true, States = true, ShowHidden = false, MinSecondsBetween = 5.0 },
     Debug = { Log = false, SlowHookMs = 8, TickMs = 200, Commands = false },
 }
 
@@ -94,7 +94,7 @@ if not okCfg or type(userCfg) ~= "table" then
 end
 local cfg = merge(userCfg, defaults)
 U.Verbose = cfg.Debug.Log
-U.Quiet = cfg.Hud.Quiet
+require("stealth.hudmsg").Quiet = cfg.Hud.Quiet ~= false
 
 STEALTH = { version = VERSION, cfg = cfg, on = false, player = nil, playerAddr = nil }
 
