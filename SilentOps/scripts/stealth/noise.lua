@@ -282,12 +282,34 @@ end
 
 -- Hooks ---------------------------------------------------------------------------
 -- Post-hook of Master_Hand_Weapon_C:SpawnProjectile / ActiveBeam1 (self = the weapon).
+-- The suppressed shot's own sound (0.3.4). The game has no suppressed sound, so the pistol's shot
+-- cues play very quietly (setSound above) and a short muffled thump, one of the game's own impact
+-- sounds, plays on top. If the sound is not loaded it is loaded once; a miss is retried every 30 s.
+local thumpMissAt = -1e9
+function N.playThump(weapon)
+    local c = cfg().Suppressor
+    if not c.ThumpSound or c.ThumpSound == "" then return end
+    local snd = StaticFindObject(c.ThumpSound)
+    if not U.valid(snd) then
+        local now = os.clock()
+        if now - thumpMissAt < 30 then return end
+        thumpMissAt = now
+        pcall(function() LoadAsset((c.ThumpSound:gsub("%.[^%.]+$", ""))) end)
+        snd = StaticFindObject(c.ThumpSound)
+        if not U.valid(snd) then U.warn("suppressor sound not found: " .. c.ThumpSound); return end
+    end
+    pcall(function()
+        U.gameplayStatics():PlaySound2D(weapon, snd, c.ThumpVolume or 0.6, c.ThumpPitch or 1.4, 0.0, nil, nil, false)
+    end)
+end
+
 function N.onShot(weapon)
     local player = U.playerPawn(weapon)
     if not player then return end
     local c = cfg().Noise
     local kind = N.kindOf(weapon)
     if N.isSuppressed(weapon) then
+        N.playThump(weapon)
         local s = c.SuppressedShot
         N.emit(U.location(player), type(s) == "table" and (s[kind] or s.pistol or 1200) or s, "shot", "suspect", c.HeardBump)
     else

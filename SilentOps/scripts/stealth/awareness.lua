@@ -441,7 +441,10 @@ function A.sightRate(e, me, now, exp, backdrop)
     local s = c.Senses
     local d = U.dist(e.pos, me.pos)
     -- the alert level sharpens or dulls the senses: farther and wider when uneasy
-    local base = (e.baseRange or c.SightRange) * e.rangeMul * (s.Range[lv] or 1.0)
+    -- 0.3.4: at least MinSightRange. The eye HTR sets (25 m relaxed) decides when vanilla combat
+    -- starts; used here it hid a standing player in plain view at 20-30 m.
+    local eye = math.max(e.baseRange or c.SightRange, c.MinSightRange or 0)
+    local base = eye * e.rangeMul * (s.Range[lv] or 1.0)
         * (me.light and c.FlashlightRangeFactor or 1.0)
     local crouched = me.stance == G.Stance.Crouching
     if d > base * (crouched and 1.0 or c.FarNoticeFactor) then return 0, false end
@@ -631,12 +634,22 @@ function A.tick(player, me, dt, squad, pc)
                 if e.proxT > c.ProximitySeconds then target = player end
                 react(e, npc, target, seen and instant and "in plain view" or "close", now)
             elseif seen then
+                -- A cap means "something over there, not sure yet". Watched that long without a
+                -- break, it is sure (0.3.4; before, the meter could sit at the cap for good). Past
+                -- its normal range (the lower cap) it takes twice as long.
+                if cap then
+                    e.capT = (e.capT or 0) + dt
+                    local need = (me.stance == G.Stance.Crouching and c.IdentifySecondsCrouched or c.IdentifySeconds) or 3.0
+                    if cap < (c.IdentifyCap or 0.85) then need = need * 2 end
+                    if e.capT >= need / math.max(0.5, e.perception or 1.0) then cap = nil end
+                end
                 e.meter = e.meter + rate * dt
                 if cap then e.meter = math.max(math.min(e.meter, cap), e.meter - rate * dt) end
                 e.lastKnown = tpos
                 if e.meter >= 1.0 then react(e, npc, target, why, now)
                 elseif e.state == A.CALM and e.meter >= c.SuspiciousAt then setState(e, A.SUSPICIOUS) end
             else
+                e.capT = 0
                 e.meter = math.max(0, e.meter - c.DecayPerSec * dt)
             end
             if e.reactAt then

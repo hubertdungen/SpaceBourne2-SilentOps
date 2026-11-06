@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.4 — 2026-11-06
+
+- **Fix: enemies did not see you in plain view at 20–30 m.** Silent Ops took the NPC's sight
+  range from its eye, which HTR sets to 25 m while relaxed, and then shortened it further. Standing
+  in the open at 25 m you were often out of range, and crouched you were not seen at all. Sight now
+  reaches at least 45 m in plain view (`Detection.MinSightRange`).
+- **Fix: the awareness meter could rise and stop for good.** Seen from far, an NPC only got to
+  "someone is over there" and stayed there. Now, watched without a break for about 3 s (6 s
+  crouched, twice as long beyond its normal range; trained NPCs quicker), it is sure and reacts.
+  Out of sight, awareness still fades.
+- **Suppressed pistol sound.** The game has no suppressed sound, so the pistol's own shot now plays
+  very quietly with a short muffled thump on top (one of the game's own sounds;
+  `Suppressor.ThumpSound`, `ThumpVolume`, `ThumpPitch`).
+- Not tested in game yet (the test launch could not start overnight).
+
 ## 0.3.3 — 2026-11-06
 
 - **Enemies hear a fight in the next room.** Before, only your shots, your squad's and turrets' were

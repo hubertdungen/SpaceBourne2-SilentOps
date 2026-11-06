@@ -8,7 +8,7 @@ where they are looking, your stance, how fast you move, your flashlight and how 
 are. Gunshots carry and put enemies on edge, a suppressed pistol thumps instead of cracking, a knife
 from behind kills silently, and your squad can follow you quietly without opening fire.
 
-Version 0.3.3 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6) · UE4SS Lua mod · works alone or with
+Version 0.3.4 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6) · UE4SS Lua mod · works alone or with
 [Hardcore Tactical Realism](https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism).
 
 ## What it does
@@ -60,7 +60,7 @@ Version 0.3.3 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6
 
 ## Install
 
-1. Download `SilentOps-0.3.3.zip` from the
+1. Download `SilentOps-0.3.4.zip` from the
    [releases](https://github.com/hubertdungen/SpaceBourne2-SilentOps/releases).
 2. Extract it into the game folder
    (`...\steamapps\common\SpaceBourne 2\`). It adds

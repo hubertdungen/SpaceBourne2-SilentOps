@@ -16,7 +16,7 @@
     stealth/hud.lua         on-screen messages
 ]]
 
-local VERSION = "0.3.3"
+local VERSION = "0.3.4"
 
 local U = require("stealth.util")
 
@@ -26,12 +26,12 @@ local U = require("stealth.util")
 local defaults = {
     Enabled = true, RememberToggle = false, ToggleKey = "Shift+F4",
     Detection = {
-        SightSource = "eye", SightRange = 3500, BubbleRadius = 6000, CentralHalfAngle = 35, PeripheralHalfAngle = 75, PeripheralFactor = 0.35,
+        SightSource = "eye", SightRange = 3500, MinSightRange = 4500, BubbleRadius = 6000, CentralHalfAngle = 35, PeripheralHalfAngle = 75, PeripheralFactor = 0.35,
         Stance = { Standing = 1.0, Crouching = 0.85 }, StanceFill = { Standing = 1.0, Crouching = 0.55 },
         Movement = { Still = 0.5, Walk = 1.0, Run = 1.5, Sprint = 2.2 },
         ExposureRangeMin = 0.35, BackdropFactor = 0.8, BackdropDistance = 150,
         ExposurePoints = { Standing = { 70, 20, -50 }, Crouching = { 30, 0, -35 } },
-        IdentifyFraction = { Standing = 0.75, Crouching = 0.5 }, IdentifyCap = 0.85,
+        IdentifyFraction = { Standing = 0.75, Crouching = 0.5 }, IdentifyCap = 0.85, IdentifySeconds = 3.0, IdentifySecondsCrouched = 6.0,
         MovementRange = { Still = 1.0, Walk = 1.0, Run = 1.1, Sprint = 1.2 },
         StillSpeed = 50, FlashlightFactor = 2.0, FlashlightRangeFactor = 1.5, AmbientLight = 1.0,
         FillNearPerSec = 2.0, FillFarPerSec = 0.25, StandingNoticePerSec = 0.2, FarNoticeFactor = 1.6, DecayPerSec = 0.12,
@@ -60,7 +60,8 @@ local defaults = {
     },
     Suppressor = {
         ToggleKey = "F4", Eligible = { pistol = true }, AlwaysSilenced = {}, VelocityFactor = 0.92, SpreadDegrees = 0.4,
-        FitSeconds = 3.5, ShowModel = false, ModelLength = 15, ModelDiameter = 4, SoundVolume = 0.3, SoundDistantVolume = 0, SoundTailVolume = 0.2, SoundPitch = 1.2,
+        FitSeconds = 3.5, ShowModel = false, ModelLength = 15, ModelDiameter = 4, SoundVolume = 0.1, SoundDistantVolume = 0, SoundTailVolume = 0.2, SoundPitch = 1.2,
+        ThumpSound = "/Game/BallisticsVFX/SFX/HitGround/Impact_Blanket_Hit_By_Metal_Pole_01.Impact_Blanket_Hit_By_Metal_Pole_01", ThumpVolume = 0.6, ThumpPitch = 1.4,
     },
     Takedown = {
         Enabled = true, Weapons = { knife = true, sword = true, hammer = false }, MaxDistance = 220, BehindAngle = 110,

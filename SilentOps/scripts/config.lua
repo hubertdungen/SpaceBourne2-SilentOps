@@ -23,6 +23,9 @@ return {
         -- sets to its doctrine's relaxed sight (vanilla: 35 m). "config": use SightRange.
         SightSource          = "eye",
         SightRange           = 3500,
+        -- A figure in plain view is made out at least this far, whatever the NPC's eye is set to
+        -- (HTR's relaxed eye is 25 m: it decides when vanilla combat starts, not when you are seen).
+        MinSightRange        = 4500,
         BubbleRadius        = 6000, -- NPCs farther than this are not processed
         CentralHalfAngle    = 35,   -- full attention inside this cone
         PeripheralHalfAngle = 75,   -- side vision up to here...
@@ -41,6 +44,10 @@ return {
         -- "something" and its meter stops at IdentifyCap: it walks over to look before it is sure.
         IdentifyFraction = { Standing = 0.75, Crouching = 0.5 },
         IdentifyCap      = 0.85,
+        -- ...but watched that long without a break, it is sure (seconds; twice as long past its
+        -- normal range; trained NPCs are quicker).
+        IdentifySeconds  = 3.0,
+        IdentifySecondsCrouched = 6.0,
         -- Movement: motion draws the eye. Movement = how fast suspicion builds,
         -- MovementRange = how far away it still counts.
         Movement      = { Still = 0.5, Walk = 1.0, Run = 1.5, Sprint = 2.2 },
@@ -148,10 +155,15 @@ return {
         ModelDiameter  = 4,     -- cm
         -- The game has no suppressed shot sound and mods cannot add one without a pak: the pistol's
         -- own shot cues play quieter and a little higher (no distant echo) while the suppressor is on.
-        SoundVolume        = 0.3,  -- the near shot
+        SoundVolume        = 0.1,  -- the near shot
         SoundDistantVolume = 0,    -- the distant echo (a suppressed pistol has none)
         SoundTailVolume    = 0.2,  -- the tail
         SoundPitch         = 1.2,
+        -- The muffled thump played on top of a suppressed shot (one of the game's own impact
+        -- sounds; "" = none), its volume and pitch.
+        ThumpSound         = "/Game/BallisticsVFX/SFX/HitGround/Impact_Blanket_Hit_By_Metal_Pole_01.Impact_Blanket_Hit_By_Metal_Pole_01",
+        ThumpVolume        = 0.6,
+        ThumpPitch         = 1.4,
     },
 
     Takedown = {

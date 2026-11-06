@@ -1006,3 +1006,23 @@ push made the player stand).
   pistol; one attached to `EBBarrel` (not in the hand) did. Not feasible without more research or
   a pak; `ShowModel` stays off.
 * Frames, full set, 8 enemies: 91 fps, median 9 ms, p99 21 ms, max 31 ms.
+
+### 17.12 0.3.4 (2026-11-06, not tested in game yet)
+
+* **Plain-view detection.** `sightRate` used `rangeOf(npc)` (the eye's `DetectPyramidExtent`) as
+  the base range. HTR sets that to 25 m while relaxed, and `Senses.Range` (Blue 0.85), exposure and
+  backdrop shortened it to about 13-17 m. Standing at 20-30 m you fell in the "beyond range" branch
+  (meter capped at `InvestigateAt`); crouched beyond the base range you were not seen at all.
+  The base is now at least `MinSightRange` (45 m).
+* **Caps lift.** A capped meter (`IdentifyCap` past `IdentifyFraction`, `InvestigateAt` beyond
+  range) used to stay at the cap while the NPC stood and watched. `e.capT` counts unbroken sight;
+  after `IdentifySeconds` (3 s standing, 6 s crouched, x2 beyond range, divided by the NPC's
+  perception) the cap is lifted. Losing sight resets it.
+* **Suppressor sound.** The game has no suppressed shot sound. The near shot cue now plays at 0.1
+  and `Impact_Blanket_Hit_By_Metal_Pole_01` (SoundWave, 0.38 s) plays as a 2D sound at pitch 1.4.
+* **Visible suppressor, research.** `addModel` attaches the cylinder to the character's `PistolSM`.
+  In `Q1_Character`, `PistolSM` (and `Slot_1_SKM`, `Slot_2_SKM`) are the holstered weapons, hidden
+  while the weapon is drawn (`RefreshAllWeapons`), so a cylinder on them is hidden too. The weapon in
+  your hand is the `CurrentWeapon` child actor (`Master_Hand_Weapon`, whose only mesh component is
+  `SkeletalMesh`). Next test: `dev/q_handmesh.lua` (calc kit) with the pistol drawn lists every mesh
+  component near the right hand, with visibility and mesh asset.
