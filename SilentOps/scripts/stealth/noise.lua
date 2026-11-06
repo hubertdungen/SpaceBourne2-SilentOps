@@ -175,7 +175,7 @@ end
 --   sound: the pistol's own shot cues play quieter and higher while the suppressed pistol is
 --          in hand (see setSound). No new sound asset can be added without a pak.
 local CYL, SMC = "/Engine/BasicShapes/Cylinder.Cylinder", "/Script/Engine.StaticMeshComponent"
-local model = { comp = nil, w = nil, a = nil, mesh = nil, cyl = nil, smc = nil, missing = false }
+local model = { comp = nil, w = nil, a = nil, mesh = nil, cyl = nil, smc = nil, kml = nil, missing = false }
 local sound = { a = nil }
 -- The tube belongs to the weapon actor, so when the game destroys that actor (holster, swap,
 -- death, load) the tube goes with it and is only forgotten here.
@@ -225,7 +225,20 @@ local function addModel(w)
         where = U.valid(eb) and "EBBarrel" or "mesh origin"
         pcall(function() comp:K2_AttachToComponent(parent, FName("None"), 2, 2, 1, false) end)
     end
-    pcall(function() comp:K2_SetRelativeLocationAndRotation({ X = len / 2, Y = 0, Z = 0 }, { Pitch = -90, Yaw = 0, Roll = 0 }, false, {}, false) end)
+    -- Point it along the barrel: the gun mesh's X axis. The Muzzle socket itself is turned 90 degrees
+    -- (a tube along the socket's X stood out to the right of the pistol, test 20, 2026-11-06), so the
+    -- tube starts at the socket and is turned in world space from the mesh's own rotation.
+    if not U.valid(model.kml) then model.kml = StaticFindObject("/Script/Engine.Default__KismetMathLibrary") end
+    local placed = U.valid(model.kml) and pcall(function()
+        local base = comp:K2_GetComponentLocation()
+        local f = mesh:GetForwardVector()
+        local r = model.kml:ComposeRotators({ Pitch = -90, Yaw = 0, Roll = 0 }, mesh:K2_GetComponentRotation())
+        comp:K2_SetWorldLocationAndRotation({ X = base.X + f.X * len / 2, Y = base.Y + f.Y * len / 2, Z = base.Z + f.Z * len / 2 },
+            { Pitch = r.Pitch, Yaw = r.Yaw, Roll = r.Roll }, false, {}, false)
+    end)
+    if not placed then
+        pcall(function() comp:K2_SetRelativeLocationAndRotation({ X = len / 2, Y = 0, Z = 0 }, { Pitch = -90, Yaw = 0, Roll = 0 }, false, {}, false) end)
+    end
     pcall(function() comp:SetWorldScale3D({ X = dia / 100, Y = dia / 100, Z = len / 100 }) end)
     pcall(function() comp:SetMaterial(0, mesh:GetMaterial(0)) end)
     model.comp, model.w, model.a, model.mesh = comp, w, U.addr(w), mesh
