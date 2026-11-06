@@ -141,8 +141,8 @@ Known limits:
   flashlight counts.
 - An enemy that spawns right in front of you can still spot you instantly (vanilla).
 - No new animations: takedowns use the normal melee swing, which the game shows in third person.
-- The suppressed shot only sounds a little quieter: the game has no suppressed sound, and a new
-  one would need a pak. There is no visible suppressor on the pistol yet.
+- The game has no suppressed shot sound: the pistol's own shot plays very quietly with a
+  muffled thump on top. There is no visible suppressor on the pistol yet.
 - A grenade's blast is placed about 15 m ahead of where you aimed, 1.5 s after the launch (the
   game gives mods no way to follow the grenade itself).
 - No light level: the game gives mods none, and measuring the picture's brightness would cost
