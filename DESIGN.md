@@ -1035,3 +1035,22 @@ push made the player stand).
   crashed the game (access violation on the game thread, inside a call made from Lua) before the
   pistol was drawn, so it needs a narrower probe: read `CurrentWeapon.ChildActor.SkeletalMesh` alone,
   with the pistol drawn by hand.
+  Narrow probe, 2026-11-06 (test 15, `dev/q_hand2.lua`: property reads only, no crash). The user
+  drew by hand; the key gave the shotgun (`Shotgun_Laser_C`, slot 2), not the pistol, but the
+  layout is the same `Master_Hand_Weapon` one:
+  - `CurrentWeapon` is a ChildActorComponent added at draw time (`NODE_AddChildActorComponent-0`)
+    and attached to `HeldObjectRoot`, which sits on the body mesh at socket `VB RHS_ik_hand_gun`.
+    On holster it is gone (`CurrentWeapon` = none): the weapon actor is destroyed on every
+    holster or swap and made again on the next draw.
+  - The gun you see in hand is the weapon actor's `SkeletalMesh` (visible, asset
+    `SK_Sci-fi_Shotgun`, at the child actor's origin). The holster copy (`Slot_2_SKM`) turns
+    invisible while it is drawn and visible again on holster. `PistolSM` stays on the hip.
+  - `EBBarrel` (hidden marker) is a child of that `SkeletalMesh` at the barrel tip (shotgun:
+    relative 52, 0, 11 cm).
+  - The holster mounts `Pistol` and `Rifle-Attach-Root_` are hidden static meshes that use the
+    engine `Cylinder`, as our model does.
+  So the 0.3.1 "tube on the floor" fits: the cylinder was the player's component, attached to a
+  weapon actor that the game destroys on holster, so it fell off and stayed in the world. Next
+  try: add the cylinder to the weapon actor itself (dies with it), attached to its `SkeletalMesh`
+  at the `Muzzle` socket if the mesh has one, else at `EBBarrel`'s place; add it again on each
+  draw (new `CurrentWeapon.ChildActor`). Needs a look in game with the pistol drawn.
