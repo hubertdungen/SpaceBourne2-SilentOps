@@ -350,13 +350,15 @@ local function tick()
     end
 end
 
--- The tick runs on the game thread, pumped by the ALS character tick (gametick.lua, 0.3.5). Until
+-- The tick runs on the game thread, pumped by the HUD draw, with the ALS character tick as a
+-- fallback (gametick.lua, 0.3.5). Until
 -- 0.3.4 it was LoopAsync + ExecuteInGameThread: called from UE4SS's async thread,
 -- ExecuteInGameThread writes a map all mods share without a lock, and two mods doing it at once
 -- crashed the game (UE4SS.dll+0x87c104). After each load or possession (ClientRestart) the pump
 -- hook is set again.
 local GT = require("stealth.gametick")
 GT.log = function(msg) U.warn(msg) end
+GT.drive(GT.HUD_TICK, "hud")
 GT.drive(GT.FOOT_TICK, "foot")
 GT.boot()
 GT.every(cfg.Debug.TickMs / 1000, function()
