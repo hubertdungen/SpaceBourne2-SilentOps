@@ -1071,3 +1071,7 @@ push made the player stand).
   Test 19c: the same calls followed by `FinishAddComponent(comp, false, identity)` are drawn
   (WasRecentlyRendered true, the control tube plainly in the screenshot, the pistol tube at the
   Muzzle, mostly behind the slide from first person). 0.3.6 does this and turns the model back on.
+  Test 20: drawn in hand, but standing out to the right: the Muzzle socket is turned 90 degrees (its X
+  is the gun's right). Test 21: the tube is turned from the gun mesh's own rotation (mesh X is the
+  barrel: dot 0.99 against the line from the mesh origin to the Muzzle socket) and starts at the
+  socket; it sits along the barrel (user screenshot, third person) and comes back after swaps.

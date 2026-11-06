@@ -5,8 +5,8 @@
 - **Visible suppressor.** With a suppressor fitted (F4), a plain tube now shows on the muzzle of the
   pistol in your hand, and comes back each time you draw it. Until now the game never drew it: a
   part added from a mod was left half made. `Suppressor.ShowModel = false` hides it.
-- Not tested in game yet with the suppressor key (the fix itself was checked in game: the tube is
-  drawn).
+- Tested in game: F4 fits the suppressor and the tube sits on the muzzle along the barrel, in first
+  and third person; it comes back after swapping weapons.
 
 ## 0.3.5 — 2026-11-06
 
