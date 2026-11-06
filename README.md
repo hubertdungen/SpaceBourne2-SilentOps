@@ -8,7 +8,7 @@ where they are looking, your stance, how fast you move, your flashlight and how 
 are. Gunshots carry and put enemies on edge, a suppressed pistol thumps instead of cracking, a knife
 from behind kills silently, and your squad can follow you quietly without opening fire.
 
-Version 0.3.2 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6) · UE4SS Lua mod · works alone or with
+Version 0.3.3 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6) · UE4SS Lua mod · works alone or with
 [Hardcore Tactical Realism](https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism).
 
 ## What it does
@@ -30,6 +30,8 @@ Version 0.3.2 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6
 - **Gunshots by weapon class.** Pistol < SMG / rifle < shotgun < DMR < sniper < grenade: how far
   each is heard (45–120 m, half through walls) and how alarming it is. Shots add up. Enemies who
   heard enough draw their weapons, search towards the sound and fire at the first movement.
+  Every NPC's gunfire counts too: a fight in the next room alerts them, and two rooms away they
+  come to check (trained ones with the weapon drawn).
 - **Witnesses.** See a mate shot dead: weapon drawn, calls the others, maybe crouches for cover.
   Find a body without hearing anything: searches and calls for help. Wounded or dying enemies cry
   out and mates come to check. A silent takedown makes no cry.
@@ -58,7 +60,7 @@ Version 0.3.2 · [Nexus Mods page](https://www.nexusmods.com/spacebourne2/mods/6
 
 ## Install
 
-1. Download `SilentOps-0.3.2.zip` from the
+1. Download `SilentOps-0.3.3.zip` from the
    [releases](https://github.com/hubertdungen/SpaceBourne2-SilentOps/releases).
 2. Extract it into the game folder
    (`...\steamapps\common\SpaceBourne 2\`). It adds

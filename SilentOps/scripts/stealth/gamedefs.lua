@@ -51,6 +51,7 @@ G.Fn = {
     NpcReceivePoint = G.Shooter .. ":ReceivePointDamage",  -- (Damage, DamageType, HitLocation, HitNormal, HitComponent,
                                                            --  BoneName, ShotFromDirection, InstigatedBy, DamageCauser, HitInfo)
     NpcOnDead       = G.Shooter .. ":OnDeadEvent",
+    NpcShot         = G.Shooter .. ":JustShoot",       -- every shot of an on-foot NPC (its fire timer)
     WeaponShot      = G.HandWeapon .. ":SpawnProjectile",  -- (TypeName) once per shot of projectile guns (an SMG burst: once)
     WeaponBeam      = G.HandWeapon .. ":ActiveBeam1",      -- (Condition) beam weapons
     WeaponAlarm     = G.HandWeapon .. ":Alarm Enemeis",    -- (SpherePos, SphereRadius) vanilla impact alarm

@@ -16,7 +16,7 @@
     stealth/hud.lua         on-screen messages
 ]]
 
-local VERSION = "0.3.2"
+local VERSION = "0.3.3"
 
 local U = require("stealth.util")
 
@@ -56,7 +56,7 @@ local defaults = {
         SuppressedShot = { pistol = 1200 }, Impact = 500, Footsteps = { Crouch = 100, Walk = 300, Run = 700, Sprint = 1200 },
         BodyFall = 500, Takedown = 250, HeavyTakedown = 600, SquadShot = 6000,
         Pain = 1500, Dying = 1500, PainMeter = 0.7, TurretDeploy = 1200, GrenadeLaunch = 1500, GrenadeDistance = 1500, GrenadeDelay = 1.5,
-        OccludedFactor = 0.5, HeardBump = 0.4, MaxOcclusionChecksPerTick = 6,
+        OccludedFactor = 0.5, HeardBump = 0.4, MaxOcclusionChecksPerTick = 6, NpcShots = true, FarGunfire = true,
     },
     Suppressor = {
         ToggleKey = "F4", Eligible = { pistol = true }, AlwaysSilenced = {}, VelocityFactor = 0.92, SpreadDegrees = 0.4,
@@ -218,6 +218,9 @@ end, "vanilla alarm cleanup")
 local function onSquadShot(self) if STEALTH.on then AL.onSoldierShot(N, self:get()) end end
 H.add(G.Fn.SoldierShoot, onSquadShot, "squad shot")
 H.add(G.Fn.SoldierPistol, onSquadShot, "squad pistol")
+if cfg.Noise.NpcShots ~= false then
+    H.add(G.Fn.NpcShot, function(self) if STEALTH.on then N.onNpcShot(self:get()) end end, "npc shot")
+end
 
 -- 0.2: suppressor spread, grenades, turrets
 H.add(G.Fn.WeaponTrace, function(self, startP, endP)

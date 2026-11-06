@@ -127,6 +127,11 @@ return {
         OccludedFactor = 0.5,   -- no line of sight to the source: heard at half the distance
         HeardBump      = 0.4,   -- suspicion added by a quiet noise
         MaxOcclusionChecksPerTick = 6,
+        -- Gunfire of every NPC, allies' and enemies', is noise too: a fight in the next room is heard.
+        NpcShots       = true,
+        -- Gunfire past the next room (no line of sight, beyond OccludedFactor of its range): enemies
+        -- come to check, Regulars and Elites with the weapon drawn. false = not heard there.
+        FarGunfire     = true,
     },
 
     Suppressor = {

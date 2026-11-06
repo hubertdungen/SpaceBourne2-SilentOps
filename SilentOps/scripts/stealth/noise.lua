@@ -27,11 +27,11 @@ local MAX_QUEUE = 32
 local function cfg() return STEALTH.cfg end
 
 -- Queue a noise. react: "hunt", "search" or "suspect"; bump: meter added when heard up close.
-function N.emit(pos, radius, kind, react, bump)
+function N.emit(pos, radius, kind, react, bump, src)
     if not pos or radius <= 0 or #N.queue >= MAX_QUEUE then return end
     -- a loud noise masks quiet ones for a few seconds (DESIGN.md 17.5)
     if react == "hunt" then N.maskUntil = os.clock() + (cfg().Environment.MaskSeconds or 5) end
-    N.queue[#N.queue + 1] = { pos = pos, r = radius, kind = kind, react = react or "suspect", bump = bump }
+    N.queue[#N.queue + 1] = { pos = pos, r = radius, kind = kind, react = react or "suspect", bump = bump, src = src }
 end
 
 -- Weapon in the player's hands ----------------------------------------------------
@@ -295,6 +295,24 @@ function N.onShot(weapon)
     end
 end
 
+-- Post-hook of Q1_Shooter_AI_C:JustShoot: every shot of an on-foot NPC, allies' and enemies' (0.3.3).
+-- Before, only your shots, the squad's and turrets' were noise, so enemies Silent Ops keeps deaf to
+-- vanilla alarms walked on while allies fought in the next room. One noise per shooter per 0.5 s.
+local npcShotAt, npcShotCount = {}, 0
+function N.onNpcShot(npc)
+    local a, now = U.addr(npc), os.clock()
+    if not a or now - (npcShotAt[a] or -1e9) < 0.5 then return end
+    if U.get(npc, P.Dead, false) == true then return end
+    if npcShotAt[a] == nil then
+        npcShotCount = npcShotCount + 1
+        if npcShotCount > 64 then npcShotAt, npcShotCount = {}, 1 end
+    end
+    npcShotAt[a] = now
+    local c = cfg().Noise
+    local kind = U.get(npc, P.Sniper, false) == true and "sniper" or "rifle"
+    N.emit(U.location(npc), c.Shot[kind] or 6500, "npc " .. kind, "hunt", c.ShotAlarm[kind] or 0.6, npc)
+end
+
 -- Post-hook of the player's OnProjectileHit_* (loc = impact point).
 function N.onImpact(loc)
     local c = cfg().Noise
@@ -426,31 +444,45 @@ function N.process(A, player, where)
     local now = os.clock()
     local env = placeHearing(where)
     local masked = now < (N.maskUntil or 0)
-    local budget = c.MaxOcclusionChecksPerTick
+    local budget = c.MaxOcclusionChecksPerTick or 6
     for _, n in ipairs(N.queue) do
-        -- the occlusion test looks from the NPC to the player, so it only fits noises you make
-        local fromPlayer = FROM_PLAYER[n.kind]
+        -- the occlusion test looks from the NPC to the source: you for the noises you make, the
+        -- shooter for NPC gunfire (0.3.3); other noises have no source to look at
+        local src = n.src
+        if src == nil and FROM_PLAYER[n.kind] then src = player end
+        if src ~= nil and not U.valid(src) then src = nil end
+        local srcA = n.src and U.addr(n.src) -- a shooter does not hear its own shot
         for _, e in pairs(A.npcs) do
-            if e.managed and e.pos then
+            if e.managed and e.pos and not (srcA and e.a == srcA) then
                 local d = U.dist(e.pos, n.pos)
                 local r = n.r * A.hearing(e, now) * env -- suspicion sharpens hearing; machinery dulls it
                 if masked and n.react == "suspect" then r = r * (cfg().Environment.MaskFactor or 0.6) end
-                if fromPlayer and d < r and d > r * c.OccludedFactor and budget > 0 then
-                    -- outer band: heard only with a clear line to the source
+                local far = false -- gunfire beyond the next room (walls in between)
+                if src and d < r and d > r * c.OccludedFactor and budget > 0 then
+                    -- outer band: heard plainly only with a clear line to the source
                     local npc = A.objOf(e)
                     budget = budget - 1
                     local ok, los = false, false
-                    if npc and player then
-                        ok, los = pcall(function() return npc.Controller:LineOfSightTo(player, { X = 0, Y = 0, Z = 0 }, false) end)
+                    if npc then
+                        ok, los = pcall(function() return npc.Controller:LineOfSightTo(src, { X = 0, Y = 0, Z = 0 }, false) end)
                     end
-                    if not (ok and los == true) then r = r * c.OccludedFactor end
+                    if not (ok and los == true) then
+                        if n.react == "hunt" and c.FarGunfire ~= false then far = true
+                        else r = r * c.OccludedFactor end
+                    end
                 end
                 if d < r then
                     local close = 1 - d / r -- 1 right next to it, 0 at the edge
                     local why = string.format("heard %s at %.0f m", n.kind, d / 100)
                     local bump = (n.bump or c.HeardBump) * (0.5 + 0.5 * close)
-                    if n.react == "hunt" then
-                        A.hearAlarm(e, n.pos, bump, why)
+                    local train = e.perception or 1.0 -- Pirate 0.85 .. Elite 1.35 (Detection.Perception)
+                    if far then
+                        -- two rooms away: suspicious, they come to check; Regulars and Elites with
+                        -- the weapon drawn, pirates and militia without
+                        if train >= 1.0 then A.hunt(e, n.pos, why .. " through walls")
+                        else A.search(e, n.pos, why .. " through walls", cfg().Detection.InvestigateAt) end
+                    elseif n.react == "hunt" then
+                        A.hearAlarm(e, n.pos, bump * train, why) -- trained ears react sooner
                     elseif n.react == "search" then
                         A.search(e, n.pos, why, n.bump)
                     else

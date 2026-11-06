@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.3 — 2026-11-06
+
+- **Enemies hear a fight in the next room.** Before, only your shots, your squad's and turrets' were
+  noise, so enemies walked on while allies fought them from the next room. Now every NPC's gunfire
+  counts: an unsuppressed fight in the next room alerts them at once.
+- **Two rooms away** (walls in between, far half of the range): they get suspicious and come to
+  check. Regulars and elites come with the weapon drawn, pirates and militia without.
+- Trained enemies react sooner to what they hear (Detection.Perception).
+- New settings: `Noise.NpcShots`, `Noise.FarGunfire`.
+- Tested in game with HTR 0.4.12: unaware enemies heard an NPC's rifle at 21 and 24 m and searched;
+  no measurable cost. The through-walls case was not exercised yet.
+
 ## 0.3.2 — 2026-11-06
 
 - **No more "tu-tu-tu".** 0.3.0 muted the wrong sound: the beep comes from the game's HUD on every
