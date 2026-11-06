@@ -14,6 +14,12 @@
   Objects are never kept between frames: the pawn is found again by its path for each resend.
 ]]
 
+-- Timed work runs on the game thread through gametick.lua, which sits next to this file in every
+-- mod (hudmsg 1.1). Until then the unmute and the re-sends used ExecuteWithDelay +
+-- ExecuteInGameThread: called from UE4SS's async thread, that could crash the game
+-- (UE4SS.dll+0x87c104). The mod must pump gametick on foot (GT.drive(GT.FOOT_TICK) or its own tick).
+local GT = require(((...) or ""):match("^(.-)[^%.]*$") .. "gametick")
+
 local HM = { RepeatSeconds = 30, HoldSeconds = 5, Quiet = true }
 
 -- The HUD's beep, and the "can't do that" alarm older builds of the set muted; normal volumes are
@@ -55,18 +61,16 @@ local function mute(seconds)
             pcall(function() snd.Volume = 0.0 end)
         end
     end
-    ExecuteWithDelay(math.floor(seconds * 1000) + 100, function()
-        ExecuteInGameThread(function()
-            local u = shared("SB2R_BeepUntil")
-            if type(u) == "number" and os.clock() < u then return end -- a newer line is still quiet
-            for _, sd in ipairs(SOUNDS) do
-                local s = StaticFindObject(sd.path)
-                if valid(s) then
-                    local normal = normalVolume(s, sd.key)
-                    pcall(function() s.Volume = normal end)
-                end
+    GT.after(seconds + 0.1, function()
+        local u = shared("SB2R_BeepUntil")
+        if type(u) == "number" and os.clock() < u then return end -- a newer line is still quiet
+        for _, sd in ipairs(SOUNDS) do
+            local s = StaticFindObject(sd.path)
+            if valid(s) then
+                local normal = normalVolume(s, sd.key)
+                pcall(function() s.Volume = normal end)
             end
-        end)
+        end
     end)
 end
 
@@ -96,9 +100,9 @@ function HM.show(pawn, text, holdSeconds, force)
         local p = path and StaticFindObject(path)
         if not valid(p) then return end
         send(p, text)
-        ExecuteWithDelay(1500, function() ExecuteInGameThread(again) end)
+        GT.after(1.5, again)
     end
-    ExecuteWithDelay(1500, function() ExecuteInGameThread(again) end)
+    GT.after(1.5, again)
     return true
 end
 

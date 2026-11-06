@@ -175,16 +175,23 @@ end
 --   sound: the pistol's own shot cues play quieter and higher while the suppressed pistol is
 --          in hand (see setSound). No new sound asset can be added without a pak.
 local CYL, SMC = "/Engine/BasicShapes/Cylinder.Cylinder", "/Script/Engine.StaticMeshComponent"
-local model = { comp = nil, a = nil, cyl = nil, smc = nil, missing = false }
+local model = { comp = nil, w = nil, a = nil, mesh = nil, cyl = nil, smc = nil, missing = false }
 local sound = { a = nil }
+-- The tube belongs to the weapon actor, so when the game destroys that actor (holster, swap,
+-- death, load) the tube goes with it and is only forgotten here.
 local function dropModel()
-    if model.comp then pcall(function() model.comp:K2_DestroyComponent(model.comp) end) end
-    model.comp, model.a = nil, nil
+    if model.comp and U.alive(model.w, model.a) and U.valid(model.comp) then
+        pcall(function() model.comp:K2_DestroyComponent(model.comp) end)
+    end
+    model.comp, model.w, model.a, model.mesh = nil, nil, nil, nil
 end
--- The pistol you see is the character's own PistolSM (the weapon actor's mesh is a hidden copy;
--- verified in game: a cylinder on the weapon actor lay on the floor). Its "Muzzle" socket points
--- along the barrel; the tube follows the pistol's visibility.
-local function addModel(player)
+-- The gun you see in hand is the weapon actor's own SkeletalMesh (CurrentWeapon child actor, on
+-- HeldObjectRoot at the hand; read in game 2026-11-06). The game makes a new weapon actor on every
+-- draw and destroys it on holster. Before 0.3.5 the tube was the player's component, on the hip
+-- PistolSM or on a weapon actor that was then destroyed, so it never showed in hand (or stayed on
+-- the floor). Placed at the mesh's "Muzzle" socket, else at the hidden EBBarrel marker (where the
+-- shots start), pointing forward (+X).
+local function addModel(w)
     local c = cfg().Suppressor
     if model.missing then return end
     if not U.valid(model.cyl) then
@@ -192,10 +199,10 @@ local function addModel(player)
         if not U.valid(model.cyl) then model.missing = true; U.warn("engine cylinder not found: no suppressor model"); return end
     end
     if not U.valid(model.smc) then model.smc = StaticFindObject(SMC) end
-    local pm = U.get(player, "PistolSM", nil)
-    if not (U.valid(pm) and U.valid(model.smc)) then return end
+    local mesh = U.get(w, "SkeletalMesh", nil)
+    if not (U.valid(mesh) and U.valid(model.smc)) then return end
     local ok, comp = pcall(function()
-        return player:AddComponentByClass(model.smc, false, { Translation = { X = 0, Y = 0, Z = 0 }, Rotation = { X = 0, Y = 0, Z = 0, W = 1 },
+        return w:AddComponentByClass(model.smc, false, { Translation = { X = 0, Y = 0, Z = 0 }, Rotation = { X = 0, Y = 0, Z = 0, W = 1 },
             Scale3D = { X = 1, Y = 1, Z = 1 } }, false)
     end)
     if not (ok and U.valid(comp)) then return end
@@ -203,11 +210,22 @@ local function addModel(player)
     pcall(function() comp:SetStaticMesh(model.cyl) end)
     pcall(function() comp:SetCollisionEnabled(0) end)
     pcall(function() comp:SetCastShadow(false) end)
-    pcall(function() comp:K2_AttachToComponent(pm, FName("Muzzle"), 2, 2, 1, false) end)
+    local muzzle = false
+    pcall(function() muzzle = mesh:DoesSocketExist(FName("Muzzle")) == true end)
+    local where = "Muzzle socket"
+    if muzzle then
+        pcall(function() comp:K2_AttachToComponent(mesh, FName("Muzzle"), 2, 2, 1, false) end)
+    else
+        local eb = U.get(w, "EBBarrel", nil)
+        local parent = U.valid(eb) and eb or mesh
+        where = U.valid(eb) and "EBBarrel" or "mesh origin"
+        pcall(function() comp:K2_AttachToComponent(parent, FName("None"), 2, 2, 1, false) end)
+    end
     pcall(function() comp:K2_SetRelativeLocationAndRotation({ X = len / 2, Y = 0, Z = 0 }, { Pitch = -90, Yaw = 0, Roll = 0 }, false, {}, false) end)
     pcall(function() comp:SetWorldScale3D({ X = dia / 100, Y = dia / 100, Z = len / 100 }) end)
-    pcall(function() comp:SetMaterial(0, pm:GetMaterial(0)) end)
-    model.comp, model.a = comp, U.addr(player)
+    pcall(function() comp:SetMaterial(0, mesh:GetMaterial(0)) end)
+    model.comp, model.w, model.a, model.mesh = comp, w, U.addr(w), mesh
+    U.log("suppressor model on " .. tostring(U.className(w)) .. " at " .. where)
 end
 -- The pistol's shots come from its weapon SFX component (WeaponSFXCompoment_III): cues_OneShot
 -- = { near shot, distant echo }, cues_Tail = the tail. Its cues_OneShot_Suppressor is empty in this
@@ -259,10 +277,10 @@ function N.updateLooks(player, now)
     looksAt = now + 0.5
     local w = U.valid(player) and weaponOf(player) or nil
     local on = w ~= nil and N.isSuppressed(w)
-    if not on or (model.comp and (model.a ~= U.addr(player) or not U.valid(model.comp))) then dropModel() end
-    if on and not model.comp and cfg().Suppressor.ShowModel then addModel(player) end
-    if model.comp then -- shown only while the pistol model is
-        local vis = U.get(U.get(player, "PistolSM", nil), "bVisible", true) == true
+    if not on or (model.comp and (model.a ~= U.addr(w) or not U.alive(model.w, model.a) or not U.valid(model.comp))) then dropModel() end
+    if on and not model.comp and cfg().Suppressor.ShowModel then addModel(w) end
+    if model.comp then -- shown only while the gun in hand is
+        local vis = U.get(model.mesh, "bVisible", true) == true
         pcall(function() model.comp:SetVisibility(vis, false) end)
     end
     setSound(w, on)

@@ -16,7 +16,7 @@
     stealth/hud.lua         on-screen messages
 ]]
 
-local VERSION = "0.3.4"
+local VERSION = "0.3.5"
 
 local U = require("stealth.util")
 
@@ -60,7 +60,7 @@ local defaults = {
     },
     Suppressor = {
         ToggleKey = "F4", Eligible = { pistol = true }, AlwaysSilenced = {}, VelocityFactor = 0.92, SpreadDegrees = 0.4,
-        FitSeconds = 3.5, ShowModel = false, ModelLength = 15, ModelDiameter = 4, SoundVolume = 0.1, SoundDistantVolume = 0, SoundTailVolume = 0.2, SoundPitch = 1.2,
+        FitSeconds = 3.5, ShowModel = true, ModelLength = 15, ModelDiameter = 4, SoundVolume = 0.1, SoundDistantVolume = 0, SoundTailVolume = 0.2, SoundPitch = 1.2,
         ThumpSound = "/Game/BallisticsVFX/SFX/HitGround/Impact_Blanket_Hit_By_Metal_Pole_01.Impact_Blanket_Hit_By_Metal_Pole_01", ThumpVolume = 0.6, ThumpPitch = 1.4,
     },
     Takedown = {
@@ -350,12 +350,18 @@ local function tick()
     end
 end
 
-LoopAsync(cfg.Debug.TickMs, function()
-    ExecuteInGameThread(function()
-        local ok, err = pcall(tick)
-        if not ok then U.warn("tick: " .. tostring(err)) end
-    end)
-    return false
+-- The tick runs on the game thread, pumped by the ALS character tick (gametick.lua, 0.3.5). Until
+-- 0.3.4 it was LoopAsync + ExecuteInGameThread: called from UE4SS's async thread,
+-- ExecuteInGameThread writes a map all mods share without a lock, and two mods doing it at once
+-- crashed the game (UE4SS.dll+0x87c104). After each load or possession (ClientRestart) the pump
+-- hook is set again.
+local GT = require("stealth.gametick")
+GT.log = function(msg) U.warn(msg) end
+GT.drive(GT.FOOT_TICK, "foot")
+GT.boot()
+GT.every(cfg.Debug.TickMs / 1000, function()
+    local ok, err = pcall(tick)
+    if not ok then U.warn("tick: " .. tostring(err)) end
 end)
 
 -- Keys -----------------------------------------------------------------------------
