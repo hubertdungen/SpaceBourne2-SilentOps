@@ -6,10 +6,10 @@
   UE4SS background thread. When two mods of the set did that at the same moment, UE4SS's own
   bookkeeping broke and the game crashed. All of it now runs on the game's own thread, driven by
   the game's tick (the same fix in every mod of the realism set).
-- **Visible suppressor.** With a suppressor fitted (F4), a plain tube now shows on the muzzle of the
-  pistol in your hand. Before, it never showed: it was put on the pistol on your hip, or on a copy
-  of the gun that the game throws away when you holster. `Suppressor.ShowModel = false` hides it.
-- Not tested in game yet.
+- The visible suppressor model (`Suppressor.ShowModel`) stays off: the tube now follows the gun in
+  your hand, but the game does not draw extra parts there yet.
+- Tested in game with the whole realism set (13 mods together, a few minutes on foot): no crash,
+  every mod's timed work ran, and fitting the suppressor (F4) works as before.
 
 ## 0.3.4 — 2026-11-06
 

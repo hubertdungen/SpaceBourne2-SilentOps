@@ -151,8 +151,8 @@ return {
         SpreadDegrees  = 0.4,   -- extra random spread per shot
         VelocityFactor = 0.92,  -- bullets a little slower (1.0 = no change)
         FitSeconds     = 3.5,   -- screwing it on / off takes this long; the pistol cannot fire meanwhile
-        ShowModel      = true,  -- a plain tube on the muzzle of the pistol in your hand while the
-                                -- suppressor is fitted (false = no tube, the rest still works)
+        ShowModel      = false, -- EXPERIMENTAL: a plain tube on the pistol's muzzle while the suppressor
+                                -- is fitted. The game does not draw it on the gun in your hand yet.
         ModelLength    = 15,    -- cm
         ModelDiameter  = 4,     -- cm
         -- The game has no suppressed shot sound and mods cannot add one without a pak: the pistol's
