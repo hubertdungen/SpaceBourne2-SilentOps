@@ -1054,3 +1054,13 @@ push made the player stand).
   try: add the cylinder to the weapon actor itself (dies with it), attached to its `SkeletalMesh`
   at the `Muzzle` socket if the mesh has one, else at `EBBarrel`'s place; add it again on each
   draw (new `CurrentWeapon.ChildActor`). Needs a look in game with the pistol drawn.
+  Test 18 (2026-11-06): tubes made the same way sit exactly at the pistol's Muzzle socket with the right
+  world size (4x15 and 10x40 cm), IsVisible true, but WasRecentlyRendered false, also with the default
+  material; the pistol mesh itself is rendered. In-game screenshots: pistol, no tube. 0.3.5 ships the
+  model off (`ShowModel = false`).
+  Test 19: the gun is drawn in the main view (one scene capture in the level, `QQ_MasterSceneRenderer`,
+  not every frame, no show-only lists; the controller's hidden lists are empty), so it is not a
+  capture trick. Five variants were made (jetpack mesh, player-owned, moved under HeldObjectRoot, a
+  control 1 m in front of the camera) but the read crashed the game before reporting: UE4SS 3.0.1
+  returns a wrapper for a null object and a method call on it is an access violation. The probe now
+  checks IsValid before every call.
