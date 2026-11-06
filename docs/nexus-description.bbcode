@@ -2,24 +2,62 @@
 
 Enemies no longer spot you the instant you enter their view, from any distance. Up close and in plain view you are seen at once; farther away they notice you gradually, depending on distance, where they are looking, your stance, how fast you move, your flashlight and how well trained they are. Gunshots carry and put enemies on edge, a suppressed pistol thumps instead of cracking, a knife from behind kills silently, and your squad can follow you quietly without opening fire.
 
-Version 0.3.4 · [url=https://www.nexusmods.com/spacebourne2/mods/6]Nexus Mods page[/url] · UE4SS Lua mod · works alone or with [url=https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism]Hardcore Tactical Realism[/url].
+[b]Links:[/b] [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps]GitHub[/url] · [url=https://www.nexusmods.com/spacebourne2/mods/6]Nexus Mods[/url] · UE4SS Lua mod · works alone or with [url=https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism]Hardcore Tactical Realism[/url] ([url=https://www.nexusmods.com/spacebourne2/mods/4]Nexus[/url]).
+[b]Install the whole realism set in one go:[/b] the [url=https://github.com/hubertdungen/SpaceBourne2-Realism]SpaceBourne 2 Realism installer[/url] ([url=https://www.nexusmods.com/spacebourne2/mods/11]Nexus[/url]).
 
 [line]
-[size=5][b]What it does[/b][/size]
+[size=5][b]Features[/b][/size]
+
+[size=4][b]Being seen[/b][/size]
 
 [list]
 [*][b]Suspicion before alarm.[/b] An unaware enemy builds a suspicion meter instead of spotting you at once. Suspicious enemies stop and turn to look; at higher suspicion they walk over to check; when the meter fills they raise their weapon and combat starts.
 [*][b]Alert levels.[/b] Every enemy is Blue (relaxed), Green (normal attention), Yellow (suspicious), Orange (danger known) or Red (combat). Levels rise and fall with evidence, and sharpen or dull sight and hearing. From Yellow an enemy raises its weapon and aims where it suspects you; it fires only at Red.
-[*][b]Realistic sight.[/b] Standing a few metres in front of an enemy is combat at once. Far away it sees "something" and walks over to look before it is sure. Crouching is not invisibility: in the open you are still noticed, only slower. What hides you is cover: how much of your head, chest and knees it can see, and a wall behind you breaking your outline. Moving draws the eye, the flashlight gives you away. Side vision is weaker; enemies do not see behind them.
+[*][b]Realistic sight.[/b] Standing a few metres in front of an enemy is combat at once. Far away it sees "something" and walks over to look; if it keeps watching you, it becomes sure after a few seconds, quicker if you move or carry a light, slower if you crouch or are half hidden.
+[*][b]Cover, not invisibility.[/b] Crouching in the open only slows them down. What hides you is cover: how much of your head, chest and knees an enemy can see, and a wall behind you breaking your outline. Moving draws the eye and the flashlight gives you away. Side vision is weaker, and enemies do not see behind them.
 [*][b]Training.[/b] Militia notice you slower and hesitate before firing; elites notice faster and react almost at once. Harder, not impossible.
-[*][b]Gunshots by weapon class.[/b] Pistol < SMG / rifle < shotgun < DMR < sniper < grenade: how far each is heard (45–120 m, half through walls) and how alarming it is. Shots add up. Enemies who heard enough draw their weapons, search towards the sound and fire at the first movement. Every NPC's gunfire counts too: a fight in the next room alerts them, and two rooms away they come to check (trained ones with the weapon drawn).
-[*][b]Witnesses.[/b] See a mate shot dead: weapon drawn, calls the others, maybe crouches for cover. Find a body without hearing anything: searches and calls for help. Wounded or dying enemies cry out and mates come to check. A silent takedown makes no cry.
-[*][b]Suppressors on pistols.[/b] Fitting one takes 3.5 s (no shooting meanwhile). Enemies hear the shot as "something odd" ~12 m away instead of an alarm 45 m away, and you hear it a little quieter. The pistol gets a little less accurate and its bullet a little slower. Remembered per weapon.
-[*][b]Silent takedowns.[/b] A melee hit from behind on an unaware enemy kills at once, without an alarm. From the front or the side it is a normal hit and the enemy shouts for help.
-[*][b]Searching and losing them.[/b] Break line of sight long enough and alerted enemies lose you, but they keep hunting with weapons drawn before they go back to patrol.
+[/list]
+
+[size=4][b]Being heard[/b][/size]
+
+[list]
+[*][b]Gunshots by weapon class.[/b] Pistol < SMG / rifle < shotgun < DMR < sniper < grenade: how far each is heard (45–120 m, half through walls) and how alarming it is. Shots add up. Enemies who heard enough draw their weapons, search towards the sound and fire at the first movement.
+[*][b]Every fight is noise.[/b] Any NPC's gunfire counts too: a fight in the next room alerts the enemies there, and two rooms away they come to check (trained ones with the weapon drawn).
 [*][b]Turrets and grenades.[/b] Setting up a turret makes noise and a firing turret is loud; a grenade blast is heard 120 m away.
-[*][b]Quiet squad orders.[/b] Follow quietly (crouched, no firing), Hold (stay put, hold fire) or Weapons free. Spotted while quiet? The squad opens fire on its own.
-[*][b]On by default.[/b] Switch it off for a moment with a key; it is on again at the next start.
+[/list]
+
+[size=4][b]Suppressed pistol[/b][/size]
+
+[list]
+[*][b]Fit a suppressor[/b] on the pistol in your hands (F4). It takes 3.5 s and the pistol cannot fire meanwhile; the pistol remembers it.
+[*][b]Quieter shots.[/b] Enemies hear a suppressed shot as "something odd" about 12 m away instead of an alarm 45 m away. You hear the pistol quieter, with a muffled thump.
+[*][b]A small cost.[/b] The pistol gets a little less accurate and its bullet a little slower.
+[/list]
+
+[size=4][b]Bodies, witnesses and searches[/b][/size]
+
+[list]
+[*][b]Witnesses.[/b] An enemy who sees a mate shot dead draws its weapon, calls the others and maybe crouches for cover. One who finds a body without hearing anything searches and calls for help.
+[*][b]Cries.[/b] Wounded or dying enemies cry out and their mates come to check. A silent takedown makes no cry.
+[*][b]Losing them.[/b] Break line of sight long enough and alerted enemies lose you, but they keep hunting with weapons drawn before they go back to patrol.
+[/list]
+
+[size=4][b]Silent takedowns[/b][/size]
+
+[list]
+[*][b]From behind.[/b] A melee hit (knife or sword) from behind on an unaware enemy kills at once, without an alarm. From the front or the side it is a normal hit and the enemy shouts for help.
+[/list]
+
+[size=4][b]Your squad[/b][/size]
+
+[list]
+[*][b]Quiet squad orders[/b] (F3): Follow quietly (crouched, no firing), Hold (stay put, hold fire) or Weapons free. Spotted while quiet? The squad opens fire on its own.
+[/list]
+
+[size=4][b]On by default[/b][/size]
+
+[list]
+[*]Stealth is on as soon as the mod is installed. Switch it off for a moment with Shift+F4; it is on again at the next start.
 [/list]
 
 [line]
@@ -27,22 +65,22 @@ Version 0.3.4 · [url=https://www.nexusmods.com/spacebourne2/mods/6]Nexus Mods p
 
 [list]
 [*]SpaceBourne 2 (Steam).
-[*][url=https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v3.0.1]UE4SS 3.0.1[/url]. Installing HTR installs it too.
-[*]Recommended: [url=https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism]Hardcore Tactical Realism[/url] 0.4.2 or later. Silent Ops then uses HTR's relaxed / alert sight per faction, and HTR handles damage, aim and combat once an enemy is alerted.
+[*][url=https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v3.0.1]UE4SS 3.0.1[/url] (the realism installer installs it for you).
+[*]Recommended: [url=https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism]Hardcore Tactical Realism[/url]. Silent Ops then uses HTR's relaxed / alert sight per faction, and HTR handles damage, aim and combat once an enemy is alerted.
 [/list]
 
 [line]
 [size=5][b]Install[/b][/size]
 
+[b]A. SpaceBourne 2 Realism installer (recommended)[/b] Get it on [url=https://www.nexusmods.com/spacebourne2/mods/11]Nexus[/url] or [url=https://github.com/hubertdungen/SpaceBourne2-Realism/releases/latest]GitHub[/url]. Tick Silent Ops and any other mods of the set: it installs UE4SS if you don't have it, switches the mods on and keeps them updated.
+
+[b]B. Manual[/b] (Nexus file, or the zip on the [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps/releases]releases page[/url])
 [list=1]
-[*]Download SilentOps-0.3.4.zip from the [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps/releases]releases[/url].
-[*]Extract it into the game folder (...\steamapps\common\SpaceBourne 2\). It adds SB2\Binaries\Win64\Mods\SilentOps\ (the enabled.txt inside turns it on). Updating: extract over it and let it replace the files.
-[*]Play. Stealth is on; [b]Shift+F4[/b] on foot switches it off for the session.
+[*]Extract the zip into your game folder (...\SpaceBourne 2, the one with SpaceBourne2.exe). It creates SB2\Binaries\Win64\Mods\SilentOps and switches itself on.
+[*]No UE4SS yet? Get [url=https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v3.0.1]RE-UE4SS 3.0.1[/url] and copy dwmapi.dll, UE4SS.dll and UE4SS-settings.ini into SpaceBourne 2\SB2\Binaries\Win64\.
 [/list]
 
-Manual install: copy the SilentOps folder from this repository into SpaceBourne 2\SB2\Binaries\Win64\Mods\.
-
-Uninstall: delete SB2\Binaries\Win64\Mods\SilentOps.
+[b]Updating:[/b] the installer does it for you, or extract the new zip the same way and let it replace the files. [b]Uninstall:[/b] untick Silent Ops in the installer or delete the SilentOps folder. Silent Ops never writes to your saves.
 
 [line]
 [size=5][b]Keys (on foot)[/b][/size]
@@ -53,9 +91,7 @@ Uninstall: delete SB2\Binaries\Win64\Mods\SilentOps.
 [*][b]F3[/b]: flashlight button ×2 (Action: Squad order: Follow quietly → Hold → Weapons free)
 [/list]
 
-F3 and F4 are the only F keys the game leaves free on foot (it uses F1, F2 and F5 for squad orders, F6 quick save, F8 quick load, F10 bug report). Plain F3 / F4 stay quiet while Shift is held. All keys can be changed in scripts\config.lua.
-
-Gamepad: press the flashlight button quickly. An even number of presses leaves the light as it was (two presses is a short flash, like a signal to your squad).
+F3 and F4 are the only F keys the game leaves free on foot (it uses F1, F2 and F5 for squad orders, F6 quick save, F8 quick load, F10 bug report). Plain F3 / F4 stay quiet while Shift is held. All keys can be changed in scripts\config.lua. Gamepad: press the flashlight button quickly. An even number of presses leaves the light as it was (two presses is a short flash, like a signal to your squad).
 
 [line]
 [size=5][b]Settings[/b][/size]
@@ -74,69 +110,41 @@ Edit Mods\SilentOps\scripts\config.lua (every line is optional). The main ones:
 [/list]
 
 [line]
-[size=5][b]Status and known limits[/b][/size]
-
-0.3 was tested in game on 2026-10-31 with HTR 0.4.8: the alert levels, crouching noticed in the open, weapon posture, the suppressor fitting time, and frame times (98 fps with 8 enemies around, no measurable cost). 0.2 was tested with HTR 0.4.7. Each of these worked:
-
-[list]
-[*]combat at once up close, and noticing at 20 m and 32 m;
-[*]unseen when crouched at 15 m;
-[*]gunshots adding up and enemies hunting with their weapon drawn;
-[*]the suppressed pistol, and the suppressor's spread and bullet speed;
-[*]witnesses of a kill and a found body;
-[*]the silent takedown without a cry;
-[*]the turret and the grenade;
-[*]the gamepad combos and the quieter messages;
-[*]frame times: no measurable cost (53 vs 54 fps with 8 enemies around).
-[/list]
-
-0.3.2's silent HUD lines were tested on 2026-11-06 through Ammo Discipline 0.1.2, which uses the same line code: no beep, the line still on screen after 3 s, a repeat skipped.
-
-0.1 tested the keys, takedowns, losing enemies and the squad orders (2026-10-30).
-
-Not tested yet:
-
-[list]
-[*]a real knife swing (the takedown was tested with the same damage call the knife makes);
-[*]a real gamepad (the button's input event was triggered directly);
-[*]the squad's quiet follow walk over long distances;
-[*]companions.
-[/list]
-
-Bosses and robot tanks keep their vanilla behaviour.
-
-Known limits:
+[size=5][b]Known limits[/b][/size]
 
 [list]
 [*]There is no real light or shadow model (the game gives no light level to mods); only your flashlight counts.
-[*]An enemy that spawns right in front of you can still spot you instantly (vanilla).
+[*]An enemy that spawns right in front of you can still spot you instantly (as in the base game).
 [*]No new animations: takedowns use the normal melee swing, which the game shows in third person.
-[*]The game has no suppressed shot sound: the pistol's own shot plays very quietly with a muffled thump on top. There is no visible suppressor on the pistol yet.
+[*]The game has no suppressed shot sound: the pistol's own shot plays very quietly with a muffled thump on top. The suppressor is not shown on the pistol.
 [*]A grenade's blast is placed about 15 m ahead of where you aimed, 1.5 s after the launch (the game gives mods no way to follow the grenade itself).
-[*]No light level: the game gives mods none, and measuring the picture's brightness would cost frames.
+[*]Bosses and robot tanks keep their base-game behaviour.
 [/list]
 
-Design notes, research and the full test log: [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps/blob/mainDESIGN.md]DESIGN.md[/url].
+Design notes and research: [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps/blob/main/DESIGN.md]DESIGN.md[/url]. Version history: [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps/blob/main/CHANGELOG.md]CHANGELOG.md[/url].
 
 [line]
-[size=5][b]Part of the SpaceBourne 2 realism set[/b][/size]
+[size=5][b]The SpaceBourne 2 realism set[/b][/size]
 
-Separate mods that work alone or together:
+Separate mods that work alone or in any combination. The [url=https://github.com/hubertdungen/SpaceBourne2-Realism]SpaceBourne 2 Realism installer[/url] ([url=https://www.nexusmods.com/spacebourne2/mods/11]Nexus[/url]) installs the ones you tick and keeps them updated.
 
 [list]
-[*][b]Hardcore Tactical Realism (HTR) — realistic ballistics and tactical AI[/b]: released: [url=https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism]GitHub[/url] · [url=https://www.nexusmods.com/spacebourne2/mods/4]Nexus Mods[/url] · [url=https://steamcommunity.com/app/1646850/discussions/0/573805072991123580]Steam discussion[/url]
-[*][b]SB2 HOTAS — real joystick, HOTAS, rudder pedals and head tracking[/b]: released: [url=https://github.com/hubertdungen/SpaceBourne2-HOTAS]GitHub[/url] · [url=https://www.nexusmods.com/spacebourne2/mods/8]Nexus Mods[/url]
-[*][b]Split Controls — separate invert for ship and on foot[/b]: released: [url=https://github.com/hubertdungen/SpaceBourne2-SplitControls]GitHub[/url] · [url=https://www.nexusmods.com/spacebourne2/mods/5]Nexus Mods[/url]
-[*][b]Silent Ops — realistic stealth (this mod)[/b]: released: [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps]GitHub[/url] · [url=https://www.nexusmods.com/spacebourne2/mods/6]Nexus Mods[/url]
-[*][b]Gear Without Levels — use gear regardless of level[/b]: released: [url=https://github.com/hubertdungen/SpaceBourne2-GearWithoutLevels]GitHub[/url] · [url=https://www.nexusmods.com/spacebourne2/mods/7]Nexus Mods[/url]
-[*][b]Faction Power — your faction gains power from dungeons, sales and missions[/b]: released: [url=https://github.com/hubertdungen/SpaceBourne2-FactionPower]GitHub[/url] · [url=https://www.nexusmods.com/spacebourne2/mods/9]Nexus Mods[/url]
-[*][b]Tactical Engineering — turrets[/b]: coming
-[*][b]Tactical First Person[/b]: coming
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-HardcoreTacticalRealism]Hardcore Tactical Realism[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/4]Nexus[/url]): realistic ballistics, wounds and tactical AI. The core of the set.
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-SilentOps]Silent Ops[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/6]Nexus[/url]): stealth, silent takedowns and suppressors.
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-AmmoDiscipline]Ammo Discipline[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/12]Nexus[/url]): carried ammo limits and scavenging, so every magazine counts.
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-GearWithoutLevels]Gear Without Levels[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/7]Nexus[/url]): use gear above your level, with small handling penalties.
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-TacticalFirstPerson]Tactical First Person[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/15]Nexus[/url]): first person on foot, weapons held up, aiming down the sights.
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-TacticalEngineering]Tactical Engineering[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/10]Nexus[/url]): realistic deployable turrets.
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-GetOutOfTheWay]Get Out of the Way[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/14]Nexus[/url]): NPCs step aside naturally when you walk through them.
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-GroundWaypoints]Ground Waypoints[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/13]Nexus[/url]): planet waypoints on foot and on the hoverbike.
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-FactionPower]Faction Power[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/9]Nexus[/url]): dungeons, strategic sales and missions earn your faction power.
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-BiggerArmies]Bigger Armies[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/17]Nexus[/url]): twice the general slots for your faction's ground and space forces.
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-ClearHUD]Clear HUD[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/16]Nexus[/url]): a reticle you can see and HUD colours of your choice.
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-SplitControls]Split Controls[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/5]Nexus[/url]): separate vertical invert for ship and on foot, per device.
+[*][b][url=https://github.com/hubertdungen/SpaceBourne2-HOTAS]SB2 HOTAS[/url][/b] ([url=https://www.nexusmods.com/spacebourne2/mods/8]Nexus[/url]): HOTAS, rudder pedals, triple screens and head tracking.
 [/list]
-
-One installer for the whole set is planned.
 
 [line]
 [size=5][b]License[/b][/size]
 
-MIT. See [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps/blob/mainLICENSE]LICENSE[/url].
+MIT. See [url=https://github.com/hubertdungen/SpaceBourne2-SilentOps/blob/main/LICENSE]LICENSE[/url].
