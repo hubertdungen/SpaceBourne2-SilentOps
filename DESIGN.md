@@ -1064,3 +1064,10 @@ push made the player stand).
   control 1 m in front of the camera) but the read crashed the game before reporting: UE4SS 3.0.1
   returns a wrapper for a null object and a method call on it is an access violation. The probe now
   checks IsValid before every call.
+  Test 19b: none of five tubes was drawn, not even a control tube owned by the player, attached to
+  nothing, in front of the camera, whose parent was null although bManualAttachment was false. So
+  AddComponentByClass called from UE4SS 3.0.1 never finishes the component (likely the FTransform
+  argument is passed wrong and bDeferredFinish arrives as true): it is never registered.
+  Test 19c: the same calls followed by `FinishAddComponent(comp, false, identity)` are drawn
+  (WasRecentlyRendered true, the control tube plainly in the screenshot, the pistol tube at the
+  Muzzle, mostly behind the slide from first person). 0.3.6 does this and turns the model back on.

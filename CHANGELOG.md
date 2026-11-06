@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.6 — 2026-11-06
+
+- **Visible suppressor.** With a suppressor fitted (F4), a plain tube now shows on the muzzle of the
+  pistol in your hand, and comes back each time you draw it. Until now the game never drew it: a
+  part added from a mod was left half made. `Suppressor.ShowModel = false` hides it.
+- Not tested in game yet with the suppressor key (the fix itself was checked in game: the tube is
+  drawn).
+
 ## 0.3.5 — 2026-11-06
 
 - **Fix: a "Fatal Error!" crash that could come at any moment.** The mod's timed work ran on a

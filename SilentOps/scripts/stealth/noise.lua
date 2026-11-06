@@ -209,7 +209,11 @@ local function addModel(w)
     local len, dia = c.ModelLength or 15, c.ModelDiameter or 4
     pcall(function() comp:SetStaticMesh(model.cyl) end)
     pcall(function() comp:SetCollisionEnabled(0) end)
-    pcall(function() comp:SetCastShadow(false) end)
+        pcall(function() comp:SetCastShadow(false) end)
+    -- Called from UE4SS 3.0.1, AddComponentByClass leaves the component unregistered (it is never
+    -- drawn, and it is not even attached to the root): finish it by hand (test 19c, 2026-11-06).
+    pcall(function() w:FinishAddComponent(comp, false, { Translation = { X = 0, Y = 0, Z = 0 },
+        Rotation = { X = 0, Y = 0, Z = 0, W = 1 }, Scale3D = { X = 1, Y = 1, Z = 1 } }) end)
     local muzzle = false
     pcall(function() muzzle = mesh:DoesSocketExist(FName("Muzzle")) == true end)
     local where = "Muzzle socket"

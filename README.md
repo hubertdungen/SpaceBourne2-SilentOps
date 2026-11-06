@@ -53,6 +53,8 @@ knife from behind kills silently, and your squad can follow you quietly without 
   meanwhile; the pistol remembers it.
 - **Quieter shots.** Enemies hear a suppressed shot as "something odd" about 12 m away instead of an
   alarm 45 m away. You hear the pistol quieter, with a muffled thump.
+- **You can see it.** A plain tube sits on the muzzle of the pistol in your hand while the
+  suppressor is fitted.
 - **A small cost.** The pistol gets a little less accurate and its bullet a little slower.
 
 ### Bodies, witnesses and searches
@@ -144,7 +146,7 @@ Edit `Mods\SilentOps\scripts\config.lua` (every line is optional). The main ones
 - An enemy that spawns right in front of you can still spot you instantly (as in the base game).
 - No new animations: takedowns use the normal melee swing, which the game shows in third person.
 - The game has no suppressed shot sound: the pistol's own shot plays very quietly with a muffled
-  thump on top. The suppressor is not shown on the pistol.
+  thump on top. The suppressor is a plain tube, not a detailed model.
 - A grenade's blast is placed about 15 m ahead of where you aimed, 1.5 s after the launch (the game
   gives mods no way to follow the grenade itself).
 - Bosses and robot tanks keep their base-game behaviour.

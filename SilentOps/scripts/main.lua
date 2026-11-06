@@ -16,7 +16,7 @@
     stealth/hud.lua         on-screen messages
 ]]
 
-local VERSION = "0.3.5"
+local VERSION = "0.3.6"
 
 local U = require("stealth.util")
 
@@ -60,7 +60,7 @@ local defaults = {
     },
     Suppressor = {
         ToggleKey = "F4", Eligible = { pistol = true }, AlwaysSilenced = {}, VelocityFactor = 0.92, SpreadDegrees = 0.4,
-        FitSeconds = 3.5, ShowModel = false, ModelLength = 15, ModelDiameter = 4, SoundVolume = 0.1, SoundDistantVolume = 0, SoundTailVolume = 0.2, SoundPitch = 1.2,
+        FitSeconds = 3.5, ShowModel = true, ModelLength = 15, ModelDiameter = 4, SoundVolume = 0.1, SoundDistantVolume = 0, SoundTailVolume = 0.2, SoundPitch = 1.2,
         ThumpSound = "/Game/BallisticsVFX/SFX/HitGround/Impact_Blanket_Hit_By_Metal_Pole_01.Impact_Blanket_Hit_By_Metal_Pole_01", ThumpVolume = 0.6, ThumpPitch = 1.4,
     },
     Takedown = {
