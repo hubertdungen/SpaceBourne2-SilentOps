@@ -1015,9 +1015,15 @@ push made the player stand).
   (meter capped at `InvestigateAt`); crouched beyond the base range you were not seen at all.
   The base is now at least `MinSightRange` (45 m).
 * **Caps lift.** A capped meter (`IdentifyCap` past `IdentifyFraction`, `InvestigateAt` beyond
-  range) used to stay at the cap while the NPC stood and watched. `e.capT` counts unbroken sight;
-  after `IdentifySeconds` (3 s standing, 6 s crouched, x2 beyond range, divided by the NPC's
-  perception) the cap is lifted. Losing sight resets it.
+  range) used to stay at the cap while the NPC stood and watched. `e.capT` counts unbroken sight
+  weighted by the sight rate (`dt * rate / IdentifyRefRate`, at most x4 per tick), so light,
+  movement, stance, exposure, cone and the NPC's perception all count. The cap lifts at
+  `IdentifySeconds` (3 s at the reference rate 0.3, about a figure standing still in the far part
+  of the range), x2 beyond range. Losing sight resets it. Measured in game (test 14, 2026-11-06):
+  standing still at 25 m the rate is 0.87, inside the identify range, so no cap: calm ->
+  suspicious -> alert in about 2 s. Crouched still at 20-26 m it is 0.05-0.07: suspicious after
+  about 5 s; the cap then lifts after about 15 s of unbroken staring (the meter needs that long to
+  reach the cap anyway).
 * **Suppressor sound.** The game has no suppressed shot sound. The near shot cue now plays at 0.1
   and `Impact_Blanket_Hit_By_Metal_Pole_01` (SoundWave, 0.38 s) plays as a 2D sound at pitch 1.4.
 * **Visible suppressor, research.** `addModel` attaches the cylinder to the character's `PistolSM`.
@@ -1025,4 +1031,7 @@ push made the player stand).
   while the weapon is drawn (`RefreshAllWeapons`), so a cylinder on them is hidden too. The weapon in
   your hand is the `CurrentWeapon` child actor (`Master_Hand_Weapon`, whose only mesh component is
   `SkeletalMesh`). Next test: `dev/q_handmesh.lua` (calc kit) with the pistol drawn lists every mesh
-  component near the right hand, with visibility and mesh asset.
+  component near the right hand, with visibility and mesh asset. Tried 2026-11-06: that scan
+  crashed the game (access violation on the game thread, inside a call made from Lua) before the
+  pistol was drawn, so it needs a narrower probe: read `CurrentWeapon.ChildActor.SkeletalMesh` alone,
+  with the pistol drawn by hand.

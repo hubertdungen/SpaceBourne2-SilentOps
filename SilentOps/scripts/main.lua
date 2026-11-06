@@ -31,7 +31,7 @@ local defaults = {
         Movement = { Still = 0.5, Walk = 1.0, Run = 1.5, Sprint = 2.2 },
         ExposureRangeMin = 0.35, BackdropFactor = 0.8, BackdropDistance = 150,
         ExposurePoints = { Standing = { 70, 20, -50 }, Crouching = { 30, 0, -35 } },
-        IdentifyFraction = { Standing = 0.75, Crouching = 0.5 }, IdentifyCap = 0.85, IdentifySeconds = 3.0, IdentifySecondsCrouched = 6.0,
+        IdentifyFraction = { Standing = 0.75, Crouching = 0.5 }, IdentifyCap = 0.85, IdentifySeconds = 3.0, IdentifyRefRate = 0.3,
         MovementRange = { Still = 1.0, Walk = 1.0, Run = 1.1, Sprint = 1.2 },
         StillSpeed = 50, FlashlightFactor = 2.0, FlashlightRangeFactor = 1.5, AmbientLight = 1.0,
         FillNearPerSec = 2.0, FillFarPerSec = 0.25, StandingNoticePerSec = 0.2, FarNoticeFactor = 1.6, DecayPerSec = 0.12,

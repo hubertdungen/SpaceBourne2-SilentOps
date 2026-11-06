@@ -634,14 +634,18 @@ function A.tick(player, me, dt, squad, pc)
                 if e.proxT > c.ProximitySeconds then target = player end
                 react(e, npc, target, seen and instant and "in plain view" or "close", now)
             elseif seen then
-                -- A cap means "something over there, not sure yet". Watched that long without a
-                -- break, it is sure (0.3.4; before, the meter could sit at the cap for good). Past
-                -- its normal range (the lower cap) it takes twice as long.
+                                -- A cap means "something over there, not sure yet". Watched without a break, it
+                -- becomes sure (0.3.4; before, the meter could sit at the cap for good). The time
+                -- runs at the sight rate: IdentifySeconds at IdentifyRefRate (a figure standing still
+                -- in the far part of its sight), quicker when you move, sprint or carry a light, slower crouched,
+                -- half hidden or at the edge of its vision; a trained NPC is quicker (all in
+                -- `rate`). Past its normal range (the lower cap) it takes twice as long.
                 if cap then
-                    e.capT = (e.capT or 0) + dt
-                    local need = (me.stance == G.Stance.Crouching and c.IdentifySecondsCrouched or c.IdentifySeconds) or 3.0
+                    local f = math.min(4.0, rate / (c.IdentifyRefRate or 0.3))
+                    e.capT = (e.capT or 0) + dt * f
+                    local need = c.IdentifySeconds or 3.0
                     if cap < (c.IdentifyCap or 0.85) then need = need * 2 end
-                    if e.capT >= need / math.max(0.5, e.perception or 1.0) then cap = nil end
+                    if e.capT >= need then cap = nil end
                 end
                 e.meter = e.meter + rate * dt
                 if cap then e.meter = math.max(math.min(e.meter, cap), e.meter - rate * dt) end

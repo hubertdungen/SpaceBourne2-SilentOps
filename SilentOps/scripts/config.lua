@@ -44,10 +44,12 @@ return {
         -- "something" and its meter stops at IdentifyCap: it walks over to look before it is sure.
         IdentifyFraction = { Standing = 0.75, Crouching = 0.5 },
         IdentifyCap      = 0.85,
-        -- ...but watched that long without a break, it is sure (seconds; twice as long past its
-        -- normal range; trained NPCs are quicker).
+                -- ...but watched without a break, it becomes sure: IdentifySeconds when it sees you as
+        -- clearly as IdentifyRefRate (someone standing still in the far part of its sight). Moving, sprinting
+        -- or a light make it quicker; crouched, half hidden or at the edge of its vision slower;
+        -- trained NPCs are quicker. Twice as long past its normal range.
         IdentifySeconds  = 3.0,
-        IdentifySecondsCrouched = 6.0,
+        IdentifyRefRate  = 0.3,
         -- Movement: motion draws the eye. Movement = how fast suspicion builds,
         -- MovementRange = how far away it still counts.
         Movement      = { Still = 0.5, Walk = 1.0, Run = 1.5, Sprint = 2.2 },
