@@ -495,55 +495,102 @@ local function placeHearing(where)
     if where == G.Where.Dungeon then return h.Dungeon or 1.0 end
     return 1.0
 end
+-- Line of sight from an NPC to a noise source, remembered for LosSeconds so a burst of fire does
+-- not cost a trace per shot (0.3.7).
+N.los = {}
+local losCount = 0
+local function lineOfSight(e, npc, src, srcA, now, c)
+    local key = tostring(e.a) .. ":" .. tostring(srcA)
+    local hit = N.los[key]
+    if hit and now - hit.t < (c.LosSeconds or 1.0) then return hit.v end
+    local ok, los = pcall(function() return npc.Controller:LineOfSightTo(src, { X = 0, Y = 0, Z = 0 }, false) end)
+    if not hit then
+        losCount = losCount + 1
+        if losCount > 256 then N.los, losCount = {}, 1 end
+    end
+    local v = ok and los == true
+    N.los[key] = { v = v, t = now }
+    return v
+end
+
+-- Gunfire through walls (0.3.7): how an NPC reacts to a shot it hears without a clear line to the
+-- shooter. Closer means stronger: past Noise.ThroughWalls.Strong of the range (about two rooms of a
+-- station) trained NPCs still hunt with the weapon drawn, the others come to check.
+local function heardThroughWalls(A, e, n, d, r, now, c)
+    local tw = c.ThroughWalls or {}
+    local why = string.format("heard %s at %.0f m through walls", n.kind, d / 100)
+    local train = e.perception or 1.0 -- Pirate 0.85 .. Elite 1.35 (Detection.Perception)
+    if d < r * (tw.Strong or 0.55) then
+        if train >= 1.0 then A.hunt(e, n.pos, why) -- the next rooms: Regulars and Elites hunt
+        else A.search(e, n.pos, why, cfg().Detection.InvestigateAt) end
+    elseif train >= (tw.EliteHunt or 1.3) then
+        A.hunt(e, n.pos, why) -- far rooms: only elites come in hunting
+    else
+        A.search(e, n.pos, why, cfg().Detection.InvestigateAt)
+    end
+end
+
 function N.process(A, player, where)
     if #N.queue == 0 then return end
     local c = cfg().Noise
     local now = os.clock()
     local env = placeHearing(where)
     local masked = now < (N.maskUntil or 0)
-    local budget = c.MaxOcclusionChecksPerTick or 6
+    local budget = c.MaxOcclusionChecksPerTick or 8
+    local tw = c.ThroughWalls or {}
+    local done = {} -- gunfire: one shot per shooter per tick is enough (a burst is one event)
     for _, n in ipairs(N.queue) do
         -- the occlusion test looks from the NPC to the source: you for the noises you make, the
-        -- shooter for NPC gunfire (0.3.3); other noises have no source to look at
+        -- shooter for NPC and squad gunfire; other noises have no source to look at
         local src = n.src
         if src == nil and FROM_PLAYER[n.kind] then src = player end
         if src ~= nil and not U.valid(src) then src = nil end
-        local srcA = n.src and U.addr(n.src) -- a shooter does not hear its own shot
-        for _, e in pairs(A.npcs) do
-            if e.managed and e.pos and not (srcA and e.a == srcA) then
-                local d = U.dist(e.pos, n.pos)
-                local r = n.r * A.hearing(e, now) * env -- suspicion sharpens hearing; machinery dulls it
-                if masked and n.react == "suspect" then r = r * (cfg().Environment.MaskFactor or 0.6) end
-                local far = false -- gunfire beyond the next room (walls in between)
-                if src and d < r and d > r * c.OccludedFactor and budget > 0 then
-                    -- outer band: heard plainly only with a clear line to the source
-                    local npc = A.objOf(e)
-                    budget = budget - 1
-                    local ok, los = false, false
-                    if npc then
-                        ok, los = pcall(function() return npc.Controller:LineOfSightTo(src, { X = 0, Y = 0, Z = 0 }, false) end)
-                    end
-                    if not (ok and los == true) then
-                        if n.react == "hunt" and c.FarGunfire ~= false then far = true
-                        else r = r * c.OccludedFactor end
-                    end
-                end
-                if d < r then
-                    local close = 1 - d / r -- 1 right next to it, 0 at the edge
-                    local why = string.format("heard %s at %.0f m", n.kind, d / 100)
-                    local bump = (n.bump or c.HeardBump) * (0.5 + 0.5 * close)
-                    local train = e.perception or 1.0 -- Pirate 0.85 .. Elite 1.35 (Detection.Perception)
-                    if far then
-                        -- two rooms away: suspicious, they come to check; Regulars and Elites with
-                        -- the weapon drawn, pirates and militia without
-                        if train >= 1.0 then A.hunt(e, n.pos, why .. " through walls")
-                        else A.search(e, n.pos, why .. " through walls", cfg().Detection.InvestigateAt) end
-                    elseif n.react == "hunt" then
-                        A.hearAlarm(e, n.pos, bump * train, why) -- trained ears react sooner
-                    elseif n.react == "search" then
-                        A.search(e, n.pos, why, n.bump)
-                    else
-                        A.suspect(e, n.pos, bump, why)
+        local srcA = src and U.addr(src) or nil
+        local gun = n.react == "hunt"
+        local key = gun and (tostring(srcA) .. n.kind) or nil
+        if not (key and done[key]) then
+            if key then done[key] = true end
+            for _, e in pairs(A.npcs) do
+                if e.managed and e.pos and not (n.src and e.a == srcA) then -- a shooter does not hear its own shot
+                    local d = U.dist(e.pos, n.pos)
+                    -- stations dull quiet noises (machinery, crowds); gunfire cuts through them
+                    local r = n.r * A.hearing(e, now) * (gun and math.max(env, 1.0) or env)
+                    if masked and n.react == "suspect" then r = r * (cfg().Environment.MaskFactor or 0.6) end
+                    if d < r then
+                        local walls = false
+                        if gun then
+                            -- gunfire: plain in the same room (Noise.ThroughWalls.Near of the range); farther, a
+                            -- wall in between makes it "through walls" (an unchecked NPC counts as behind walls)
+                            if src and d > r * (tw.Near or 0.25) then
+                                local hit = N.los[tostring(e.a) .. ":" .. tostring(srcA)]
+                                local fresh = hit and now - hit.t < (c.LosSeconds or 1.0)
+                                if fresh then walls = not hit.v
+                                elseif budget > 0 then
+                                    budget = budget - 1
+                                    walls = not lineOfSight(e, A.objOf(e), src, srcA, now, c)
+                                else walls = true end
+                            end
+                            if walls and c.FarGunfire == false then r = r * (c.OccludedFactor or 0.5) end
+                        elseif src and d > r * (c.OccludedFactor or 0.5) and budget > 0 then
+                            -- quiet noises: in the outer band heard only with a clear line to the source
+                            budget = budget - 1
+                            if not lineOfSight(e, A.objOf(e), src, srcA, now, c) then r = r * (c.OccludedFactor or 0.5) end
+                        end
+                        if d < r then
+                            local close = 1 - d / r -- 1 right next to it, 0 at the edge
+                            local why = string.format("heard %s at %.0f m", n.kind, d / 100)
+                            local bump = (n.bump or c.HeardBump) * (0.5 + 0.5 * close)
+                            local train = e.perception or 1.0
+                            if gun and walls then
+                                heardThroughWalls(A, e, n, d, r, now, c)
+                            elseif gun then
+                                A.hearAlarm(e, n.pos, bump * train, why) -- trained ears react sooner
+                            elseif n.react == "search" then
+                                A.search(e, n.pos, why, n.bump)
+                            else
+                                A.suspect(e, n.pos, bump, why)
+                            end
+                        end
                     end
                 end
             end

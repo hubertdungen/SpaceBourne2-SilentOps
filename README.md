@@ -40,10 +40,12 @@ knife from behind kills silently, and your squad can follow you quietly without 
 ### Being heard
 
 - **Gunshots by weapon class.** Pistol < SMG / rifle < shotgun < DMR < sniper < grenade: how far
-  each is heard (45–120 m, half through walls) and how alarming it is. Shots add up. Enemies who
+  each is heard (90–200 m in the open) and how alarming it is. Shots add up. Enemies who
   heard enough draw their weapons, search towards the sound and fire at the first movement.
-- **Every fight is noise.** Any NPC's gunfire counts too: a fight in the next room alerts the
-  enemies there, and two rooms away they come to check (trained ones with the weapon drawn).
+- **Through walls.** An SMG or rifle carries two or three rooms, weaker with every room: the
+  nearest rooms hunt for you with weapons drawn, the farther ones come to check, and trained
+  enemies react more than militia. In the same room a shot is heard plainly.
+- **Every fight is noise.** Any NPC's and your squad's gunfire counts too, the same way.
 - **Turrets and grenades.** Setting up a turret makes noise and a firing turret is loud; a grenade
   blast is heard 120 m away.
 

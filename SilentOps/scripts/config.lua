@@ -112,8 +112,8 @@ return {
 
     Noise = {
         -- Hearing radius per weapon class (a gunshot carries far; walls halve it)...
-        Shot = { pistol = 4500, smg = 6000, rifle = 6500, shotgun = 7500, dmr = 8500, sniper = 10000,
-                 grenade = 12000, turret = 6500, laser = 2500, beam = 1500 },
+        Shot = { pistol = 9000, smg = 12000, rifle = 13000, shotgun = 13000, dmr = 15000, sniper = 18000,
+                 grenade = 20000, turret = 12000, laser = 4500, beam = 3000 },
         -- ...and how alarming one shot is when heard up close (half that at the edge). Each shot
         -- heard adds up: past Detection.HuntAt the NPC draws its weapon and hunts for you.
         ShotAlarm = { pistol = 0.5, smg = 0.6, rifle = 0.6, shotgun = 0.7, dmr = 0.75, sniper = 0.8,
@@ -125,7 +125,7 @@ return {
         BodyFall       = 500,
         Takedown       = 250,
         HeavyTakedown  = 600,   -- hammer
-        SquadShot      = 6000,
+        SquadShot      = 12000,
         Pain           = 1500,  -- a wounded NPC cries out...
         Dying          = 1500,  -- ...and so does one shot dead (a silent takedown does not)
         PainMeter      = 0.7,   -- mates who hear it come to check
@@ -133,14 +133,19 @@ return {
         GrenadeLaunch  = 1500,  -- the launcher's thump (the explosion is Shot.grenade)...
         GrenadeDistance = 1500, -- ...heard this far ahead of where you aimed...
         GrenadeDelay   = 1.5,   -- ...this many seconds after the launch
-        OccludedFactor = 0.5,   -- no line of sight to the source: heard at half the distance
+        OccludedFactor = 0.5,   -- quiet noises with no line of sight to the source: heard at half the distance
         HeardBump      = 0.4,   -- suspicion added by a quiet noise
-        MaxOcclusionChecksPerTick = 6,
+        MaxOcclusionChecksPerTick = 8,
+        LosSeconds     = 1.0,   -- a line-of-sight check is reused this long (a burst costs one check)
         -- Gunfire of every NPC, allies' and enemies', is noise too: a fight in the next room is heard.
         NpcShots       = true,
-        -- Gunfire past the next room (no line of sight, beyond OccludedFactor of its range): enemies
-        -- come to check, Regulars and Elites with the weapon drawn. false = not heard there.
+        -- Gunfire through walls carries about two or three rooms, weaker with distance. In the same room
+        -- (Near of the range) a shot is heard plainly; farther, a wall in between makes it "through walls":
+        -- up to Strong of the range (the next rooms) Regulars and Elites hunt with the weapon drawn and
+        -- the others come to check; beyond that everyone comes to check, Elites still hunting.
+        -- false = gunfire behind walls is heard at OccludedFactor of the range only.
         FarGunfire     = true,
+        ThroughWalls   = { Near = 0.25, Strong = 0.55, EliteHunt = 1.3 },
     },
 
     Suppressor = {

@@ -16,7 +16,7 @@
     stealth/hud.lua         on-screen messages
 ]]
 
-local VERSION = "0.3.6"
+local VERSION = "0.3.7"
 
 local U = require("stealth.util")
 
@@ -49,14 +49,15 @@ local defaults = {
         AffectBosses = false, AffectTanks = false, MaxLineOfSightPerTick = 8,
     },
     Noise = {
-        Shot = { pistol = 4500, smg = 6000, rifle = 6500, shotgun = 7500, dmr = 8500, sniper = 10000, grenade = 12000,
-                 turret = 6500, laser = 2500, beam = 1500 },
+        Shot = { pistol = 9000, smg = 12000, rifle = 13000, shotgun = 13000, dmr = 15000, sniper = 18000, grenade = 20000,
+                 turret = 12000, laser = 4500, beam = 3000 },
         ShotAlarm = { pistol = 0.5, smg = 0.6, rifle = 0.6, shotgun = 0.7, dmr = 0.75, sniper = 0.8, grenade = 0.95,
                       turret = 0.7, laser = 0.3, beam = 0.2 },
         SuppressedShot = { pistol = 1200 }, Impact = 500, Footsteps = { Crouch = 100, Walk = 300, Run = 700, Sprint = 1200 },
-        BodyFall = 500, Takedown = 250, HeavyTakedown = 600, SquadShot = 6000,
+        BodyFall = 500, Takedown = 250, HeavyTakedown = 600, SquadShot = 12000,
         Pain = 1500, Dying = 1500, PainMeter = 0.7, TurretDeploy = 1200, GrenadeLaunch = 1500, GrenadeDistance = 1500, GrenadeDelay = 1.5,
-        OccludedFactor = 0.5, HeardBump = 0.4, MaxOcclusionChecksPerTick = 6, NpcShots = true, FarGunfire = true,
+        OccludedFactor = 0.5, HeardBump = 0.4, MaxOcclusionChecksPerTick = 8, LosSeconds = 1.0, NpcShots = true, FarGunfire = true,
+        ThroughWalls = { Near = 0.25, Strong = 0.55, EliteHunt = 1.3 },
     },
     Suppressor = {
         ToggleKey = "F4", Eligible = { pistol = true }, AlwaysSilenced = {}, VelocityFactor = 0.92, SpreadDegrees = 0.4,

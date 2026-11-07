@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.7 — 2026-11-07
+
+- **Gunfire carries farther through walls.** An SMG or rifle shot was heard only about 40–60 m away,
+  less in stations, so big rooms next door stayed calm. Now gunfire carries about two or three rooms
+  (an SMG about 120 m in the open), weaker with every room: the nearest rooms hunt with weapons
+  drawn, the farther ones come to check, elites react more than militia. Station noise no longer
+  dulls gunfire (it still masks quiet sounds).
+- Fix: past the number of wall checks per tick, far NPCs heard a shot as if there were no walls.
+  Now a burst of fire is one event per shooter, a wall check is reused for a second, and an
+  unchecked NPC counts as behind walls. Your squad's gunfire is checked for walls too.
+- Not tested in game yet.
+
 ## 0.3.6 — 2026-11-06
 
 - **Visible suppressor.** With a suppressor fitted (F4), a plain tube now shows on the muzzle of the

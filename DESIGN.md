@@ -1075,3 +1075,20 @@ push made the player stand).
   is the gun's right). Test 21: the tube is turned from the gun mesh's own rotation (mesh X is the
   barrel: dot 0.99 against the line from the mesh origin to the Muzzle socket) and starts at the
   socket; it sits along the barrel (user screenshot, third person) and comes back after swaps.
+
+### 17.13 0.3.7 (2026-11-07): gunfire through walls, graded
+
+* User report: SMG fire in a big room was not heard in the rooms next to it. Causes: the SMG range
+  was 60 m (40-48 m for a relaxed NPC in a station, where `Environment.Hearing.Station` 0.8 also
+  dulled gunfire), and past `MaxOcclusionChecksPerTick` the far NPCs got no wall check at all, so they
+  heard the shot as if in the open.
+* Now: `Noise.Shot` roughly doubled (SMG 120 m, rifle 130 m in the open); station noise dulls only
+  quiet noises. Gunfire is graded by `Noise.ThroughWalls`: inside `Near` (0.25 of the range) heard
+  plainly; farther, a wall in between makes it "through walls": up to `Strong` (0.55) Regulars and
+  Elites hunt and the others search; beyond that everyone searches, Elites (perception >= 1.3) hunt.
+  With a clear line the alarm scales with distance as before. A relaxed NPC (hearing 0.85) hears
+  an SMG plainly to ~25 m, hunts through walls to ~56 m and comes to check to ~102 m: about the
+  third room of a station.
+* Cost: one gunfire event per shooter per tick, a line-of-sight result reused `LosSeconds` (1 s),
+  8 checks per tick; an NPC left unchecked counts as behind walls (never "in the open"). Squad
+  gunfire now passes its soldier as the source, so it gets the same wall check.
