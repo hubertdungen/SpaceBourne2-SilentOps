@@ -176,6 +176,9 @@ end
 --          in hand (see setSound). No new sound asset can be added without a pak.
 local CYL, SMC = "/Engine/BasicShapes/Cylinder.Cylinder", "/Script/Engine.StaticMeshComponent"
 local model = { comp = nil, w = nil, a = nil, mesh = nil, cyl = nil, smc = nil, kml = nil, missing = false }
+-- One reused table for the SweepHitResult out param: UE4SS 3.0.1 keeps a registry reference to every
+-- table passed as an out param (side notes, ue4ss-301-lua-leaks). Only used when the tube is placed.
+local HIT = {}
 local sound = { a = nil }
 -- The tube belongs to the weapon actor, so when the game destroys that actor (holster, swap,
 -- death, load) the tube goes with it and is only forgotten here.
@@ -234,10 +237,10 @@ local function addModel(w)
         local f = mesh:GetForwardVector()
         local r = model.kml:ComposeRotators({ Pitch = -90, Yaw = 0, Roll = 0 }, mesh:K2_GetComponentRotation())
         comp:K2_SetWorldLocationAndRotation({ X = base.X + f.X * len / 2, Y = base.Y + f.Y * len / 2, Z = base.Z + f.Z * len / 2 },
-            { Pitch = r.Pitch, Yaw = r.Yaw, Roll = r.Roll }, false, {}, false)
+            { Pitch = r.Pitch, Yaw = r.Yaw, Roll = r.Roll }, false, HIT, false)
     end)
     if not placed then
-        pcall(function() comp:K2_SetRelativeLocationAndRotation({ X = len / 2, Y = 0, Z = 0 }, { Pitch = -90, Yaw = 0, Roll = 0 }, false, {}, false) end)
+        pcall(function() comp:K2_SetRelativeLocationAndRotation({ X = len / 2, Y = 0, Z = 0 }, { Pitch = -90, Yaw = 0, Roll = 0 }, false, HIT, false) end)
     end
     pcall(function() comp:SetWorldScale3D({ X = dia / 100, Y = dia / 100, Z = len / 100 }) end)
     pcall(function() comp:SetMaterial(0, mesh:GetMaterial(0)) end)
