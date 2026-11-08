@@ -10,7 +10,8 @@
 - Fix: past the number of wall checks per tick, far NPCs heard a shot as if there were no walls.
   Now a burst of fire is one event per shooter, a wall check is reused for a second, and an
   unchecked NPC counts as behind walls. Your squad's gunfire is checked for walls too.
-- Not tested in game yet.
+- Tested in game (scripted): with an NPC firing a rifle, unaware enemies placed 70-160 m away
+  behind cover came to check ("heard ... through walls"), the ones close by fought; no crash.
 
 ## 0.3.6 — 2026-11-06
 
